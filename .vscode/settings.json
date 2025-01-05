@@ -37,28 +37,7 @@
     "raspberry-pi-pico.cmakePath": "${HOME}/.pico-sdk/cmake/v3.29.9/bin/cmake",
     "raspberry-pi-pico.ninjaPath": "${HOME}/.pico-sdk/ninja/v1.12.1/ninja",
     "files.associations": {
-        "stdlib.h": "c",
-        "stdio.h": "c",
-        "*.asm": "c",
-        "pcd8544.h": "c",
-        "time.h": "c",
-        "string.h": "c",
-        "pio.h": "c",
-        "compare": "c",
-        "cstdint": "c",
-        "kurukafaarray.h": "c",
-        "8544.h": "c",
-        "rtc.h": "c",
-        "datetime.h": "c",
-        "clocks.h": "c",
-        "ds1302.h": "c",
-        "stdint.h": "c",
-        "i2c.h": "c",
         "ssd1306.h": "c",
-        "cyw43_arch.h": "c",
-        "cyw43_driver.h": "c",
-        "cyw43.h": "c",
-        "cmath": "c",
-        "SH1106.h": "c"
+        "i2c.h": "c"
     }
 }

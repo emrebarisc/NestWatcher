@@ -4,6 +4,7 @@
 #include "pico/stdlib.h"
 #include "hardware/i2c.h"
 
+#include "Font.h"
 #include "kurukafaArray.h"
 
 // Define I2C pins and address
@@ -23,6 +24,7 @@ void SSD1306_SendData(uint8_t* data, size_t length);
 void SSD1306_I2CInitOled();
 void SSD1306_Init();
 void SSD1306_ClearBuffer();
+void SSD1306_ClearBufferFrom(int x, int y);
 void SSD1306_UpdateDisplay();
 void SSD1306_SetPixel(int x, int y, bool on);
 void SSD1306_DrawExamplePattern();

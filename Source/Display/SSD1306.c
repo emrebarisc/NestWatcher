@@ -5,8 +5,6 @@
 #include "hardware/i2c.h"
 #include "pico/stdlib.h"
 
-#include "Font.h"
-
 // Send command to OLED
 void SSD1306_SendCommand(uint8_t cmd)
 {
@@ -38,7 +36,7 @@ void SSD1306_Init()
 {
     SSD1306_I2CInitOled();
     
-    sleep_ms(100); // Wait for display to power on
+    sleep_ms(200); // Wait for display to power on
 
     // Initialization sequence
     SSD1306_SendCommand(0xAE); // Display OFF
@@ -74,6 +72,12 @@ void SSD1306_ClearBuffer()
     memset(oled_buffer, 0, sizeof(oled_buffer));
 }
 
+void SSD1306_ClearBufferFrom(int x, int y)
+{
+    int index = x + y * SSD1306_WIDTH;
+    memset(oled_buffer + index, 0, sizeof(oled_buffer) - index);
+}
+
 // Update the display with the buffer
 void SSD1306_UpdateDisplay()
 {
@@ -94,7 +98,9 @@ void SSD1306_SetPixel(int x, int y, bool on)
         if (on)
         {
             oled_buffer[x + (y / 8) * SSD1306_WIDTH] |= (1 << (y % 8));
-        } else {
+        }
+        else 
+        {
             oled_buffer[x + (y / 8) * SSD1306_WIDTH] &= ~(1 << (y % 8));
         }
     }
@@ -122,11 +128,7 @@ void SSD1306_DrawExamplePattern()
 
 void SSD1306_DrawChar(int x, int y, char c, bool on)
 {
-    if (c < 32 || c > 127)
-    {
-        c = 32; // Default to space for unsupported characters
-    }
-    const uint8_t* char_bitmap = font_5x7[c - 32];
+    const uint8_t* char_bitmap = font_5x7[c];
 
     for (int col = 0; col < FONT_WIDTH; col++)
     {
