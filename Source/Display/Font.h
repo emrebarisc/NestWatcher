@@ -1,11 +1,13 @@
 #ifndef __FONT_H__
 #define __FONT_H__
 
+#include <stdlib.h>
+
 #define FONT_WIDTH 5
 #define FONT_HEIGHT 7
 #define FONT_SPACING 1
 
-static const uint8_t font_5x7[][FONT_WIDTH] = {
+static const unsigned char font_5x7[][FONT_WIDTH] = {
     {0x04, 0x12, 0x49, 0x12, 0x04}, // WIFI
     {0x22, 0x14, 0x7F, 0x2A, 0x14}, // Bluetooth
     {0x00, 0x00, 0x00, 0x00, 0x00}, // Reserved for a special character

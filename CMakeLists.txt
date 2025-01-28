@@ -26,11 +26,11 @@ if(EXISTS ${picoVscode})
     include(${picoVscode})
 endif()
 # ====================================================================================
-set(PICO_BOARD pico CACHE STRING "Board type")
+set(PICO_BOARD pico_w CACHE STRING "Board type")
 
 cmake_minimum_required(VERSION 3.12)
 
-SET(ProjectName Pico_SmartVan)
+SET(ProjectName NestWatcher)
 
 SET(FREERTOS_KERNEL_PATH ${CMAKE_CURRENT_SOURCE_DIR}/Thirdparty/FreeRTOS-Kernel)
 

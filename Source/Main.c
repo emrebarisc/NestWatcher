@@ -1,93 +1,115 @@
-#include "FreeRTOS.h"
-#include <stdio.h>
+#include "pico/cyw43_arch.h"
 #include "pico/stdlib.h"
+#include "lwip/altcp_tls.h"
 
+#include "lwip/netif.h"
+
+#include "FreeRTOS.h"
 #include "task.h"
-#include "queue.h"
-#include "semphr.h"
+#include "Network/HTTPClientUtil.h"
 
-#include "Display/SSD1306.h"
+#include "Display/Display.h"
 
-const int taskDelay = 500;
-const int taskSize = 128;
+#ifndef RUN_FREERTOS_ON_CORE
+#define RUN_FREERTOS_ON_CORE 0
+#endif
 
-const int LED_PIN = 0;
+#define TASK_PRIORITY ( tskIDLE_PRIORITY + 2UL )
+#define TASK_STACK_SIZE 1024
 
-SemaphoreHandle_t mutex;
-
-int currentLine = 0;
-
-void vGuardedPrint(char* out)
+void MainTask(__unused void *params)
 {
-    xSemaphoreTake(mutex, portMAX_DELAY);
-    puts(out);
-
-    currentLine = (currentLine + 1) % 8;
-    SSD1306_DrawString(0, currentLine * (FONT_HEIGHT + 1), out, true);
-
-    xSemaphoreGive(mutex);
-}
-
-void vTaskSMP_PrintCore(void* parameters)
-{
-    char* taskName = pcTaskGetName(NULL);
-    char out[12];
-
-    while(1)
+    if (cyw43_arch_init())
     {
-        sprintf(out, "%s %d", taskName, get_core_num());
-        vGuardedPrint(out);
-        vTaskDelay(pdMS_TO_TICKS(taskDelay));
+        Display_GuardedClear();
+        Display_GuardedPrint(0, 0, "Failed to initialise\n");
+        Display_Update();
+        return;
     }
-}
 
-void vTaskSMP_BlinkLED(void* parameters)
-{
-    while(1)
+    cyw43_arch_enable_sta_mode();
+    
+    char log[128];
+
+    Display_GuardedClear();
+    Display_GuardedPrint(0, 0, "Connecting...\n");
+    Display_Update();
+    int result = cyw43_arch_wifi_connect_timeout_ms(WIFI_SSID, WIFI_PASSWORD, CYW43_AUTH_WPA2_AES_PSK, 30000);
+    if (result)
     {
-        gpio_put(LED_PIN, !gpio_get_out_level(LED_PIN));
-        vTaskDelay(pdMS_TO_TICKS(100));
+        sprintf(log, "Failed to connect. Error code: %d\n", result);
+        Display_GuardedClear();
+        Display_GuardedPrint(0, 0, log);
+        Display_Update();
     }
-}
-
-void vTaskSMP_UpdateDisplay(void* parameters)
-{
-    while(1)
+    else
     {
-        SSD1306_UpdateDisplay();
-        vTaskDelay(pdMS_TO_TICKS(100));
+        uint8_t *ip_address = (uint8_t*)&(cyw43_state.netif[0].ip_addr.addr);
+        sprintf(log, "Connected.\nIP address %d.%d.%d.%d\n", ip_address[0], ip_address[1], ip_address[2], ip_address[3]);
+        
+        Display_GuardedClear();
+        Display_GuardedPrint(0, 0, log);
+        Display_Update();
     }
+    
+    while(1);
 }
 
-int main()
+void vLaunch( void)
+{
+    TaskHandle_t task;
+    xTaskCreate(MainTask, "TestMainThread", TASK_STACK_SIZE, NULL, TASK_PRIORITY, &task);
+
+    // xTaskCreate(Display_UpdateAsync, "Display_UpdateAsync", TASK_STACK_SIZE, NULL, 0, NULL);
+
+#if NO_SYS && configUSE_CORE_AFFINITY && configNUM_CORES > 1
+    // we must bind the main task to one core (well at least while the init is called)
+    // (note we only do this in NO_SYS mode, because cyw43_arch_freertos
+    // takes care of it otherwise)
+    vTaskCoreAffinitySet(task, 1);
+#endif
+
+    /* Start the tasks and timer running. */
+    vTaskStartScheduler();
+}
+
+int main( void )
 {
     stdio_init_all();
+    
+    Display_Init();
 
-    SSD1306_Init();
+    const char *rtos_name;
+#if ( portSUPPORT_SMP == 1 )
+    rtos_name = "FreeRTOS SMP";
+#else
+    rtos_name = "FreeRTOS";
+#endif
 
-    SSD1306_DrawString(43, 28, "Welcome", true);
-    SSD1306_UpdateDisplay();
-    sleep_ms(500);
-    SSD1306_ClearBuffer();
-    SSD1306_UpdateDisplay();
-
-    gpio_init(LED_PIN);
-    gpio_set_dir(LED_PIN, GPIO_OUT);
-
-    mutex = xSemaphoreCreateMutex();
-
-    TaskHandle_t handleA;
-    TaskHandle_t handleB;
-
-    xTaskCreate(vTaskSMP_PrintCore, "A", taskSize, NULL, 1, &handleA);
-    xTaskCreate(vTaskSMP_PrintCore, "B", taskSize, NULL, 1, &handleB);
-    xTaskCreate(vTaskSMP_PrintCore, "C", taskSize, NULL, 1, NULL);
-    xTaskCreate(vTaskSMP_PrintCore, "D", taskSize, NULL, 1, NULL);
-    xTaskCreate(vTaskSMP_BlinkLED, "BlinkLED", taskSize, NULL, 1, NULL);
-    xTaskCreate(vTaskSMP_UpdateDisplay, "UpdateDisplay", taskSize, NULL, 1, NULL);
-
-    vTaskCoreAffinitySet(handleA, (1 << 0));
-    vTaskCoreAffinitySet(handleB, (1 << 1));
-
-    vTaskStartScheduler();
+#if ( portSUPPORT_SMP == 1 ) && ( configNUM_CORES == 2 )
+    char log[1024];
+    printf("Starting %s on both cores.\n", rtos_name);
+    printf(log);
+    // Display_GuardedClear();
+    // Display_GuardedPrint(0, 0, log);
+    vLaunch();
+#elif ( RUN_FREERTOS_ON_CORE == 1 )
+    char log[1024];
+    printf("Starting %s on core 1:\n", rtos_name);
+    printf(log);
+    // Display_GuardedClear();
+    // Display_GuardedPrint(0, 0, log);
+    multicore_launch_core1(vLaunch);
+    while (true);
+#else
+    char log[1024];
+    printf("Starting %s on core 0:\n", rtos_name);
+    printf(log);
+    // Display_GuardedClear();
+    // Display_GuardedPrint(0, 0, log);
+    vLaunch();
+#endif
+    
+    cyw43_arch_deinit();
+    return 0;
 }

@@ -5,6 +5,10 @@
 #include "hardware/i2c.h"
 #include "pico/stdlib.h"
 
+#include "Font.h"
+
+uint8_t oled_buffer[SSD1306_WIDTH * SSD1306_HEIGHT / 8];
+
 // Send command to OLED
 void SSD1306_SendCommand(uint8_t cmd)
 {
@@ -102,26 +106,6 @@ void SSD1306_SetPixel(int x, int y, bool on)
         else 
         {
             oled_buffer[x + (y / 8) * SSD1306_WIDTH] &= ~(1 << (y % 8));
-        }
-    }
-}
-
-// Example pattern
-void SSD1306_DrawExamplePattern()
-{
-    for (int x = 0; x < SSD1306_WIDTH; x++)
-    {
-		if(KURUKAFA_WIDTH <= x) continue;
-        for (int y = 0; y < SSD1306_HEIGHT; y++)
-        {
-			if(KURUKAFA_HEIGHT <= y) continue;
-            SSD1306_SetPixel(x, y, 0 < kurukafa[y * SSD1306_WIDTH + x] ? 1 : 0);
-
-			// char kurukafaValue = kurukafa[y * SSD1306_WIDTH + x];
-			// for (size_t bit = 0; bit < 8; bit++)
-			// {
-            // 	SSD1306_SetPixel(x, y, (kurukafaValue >> bit) & 0x01);
-			// }
         }
     }
 }
