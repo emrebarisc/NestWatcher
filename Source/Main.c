@@ -8,7 +8,11 @@
 #include "task.h"
 #include "Network/HTTPClientUtil.h"
 
+#include "lwip/udp.h"
+
 #include "Display/Display.h"
+
+#include "kurukafaBitmap.h"
 
 #ifndef RUN_FREERTOS_ON_CORE
 #define RUN_FREERTOS_ON_CORE 0
@@ -16,6 +20,9 @@
 
 #define TASK_PRIORITY ( tskIDLE_PRIORITY + 2UL )
 #define TASK_STACK_SIZE 1024
+
+#define SERVER_PORT 5005
+#define BUFFER_SIZE 2048
 
 void MainTask(__unused void *params)
 {
@@ -45,14 +52,38 @@ void MainTask(__unused void *params)
     else
     {
         uint8_t *ip_address = (uint8_t*)&(cyw43_state.netif[0].ip_addr.addr);
-        sprintf(log, "Connected.\nIP address %d.%d.%d.%d\n", ip_address[0], ip_address[1], ip_address[2], ip_address[3]);
+        sprintf(log, "%d.%d.%d.%d\n", ip_address[0], ip_address[1], ip_address[2], ip_address[3]);
         
         Display_GuardedClear();
         Display_GuardedPrint(0, 0, log);
         Display_Update();
     }
     
-    while(1);
+    struct udp_pcb *pcb = udp_new();
+    if (!pcb) 
+    {
+        Display_GuardedClearFrom(0, 6);
+        Display_GuardedPrint(0, 48, "Failed to create UDP PCB.\n");
+        Display_Update();
+        vTaskDelete(NULL);
+    }
+
+    ip_addr_t remote_addr;
+    IP4_ADDR(&remote_addr, 192, 168, 1, 109);
+
+    const int columnSize = 1920;
+    while (1)
+    {
+        for (int rowIndex = 0; rowIndex < 480; rowIndex++)
+        {
+            struct pbuf *p = pbuf_alloc(PBUF_TRANSPORT, columnSize, PBUF_RAM);
+            if (!p) continue;
+
+            memcpy(p->payload, &kurukafaBitmap[rowIndex * columnSize], columnSize);
+            udp_sendto(pcb, p, &remote_addr, SERVER_PORT);
+            pbuf_free(p);
+        }
+    }
 }
 
 void vLaunch( void)
