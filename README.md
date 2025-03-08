@@ -6,7 +6,6 @@ The purpose of this project is to place it in a bird's nest and have its camera 
 
 Project contents:
 -  Raspberry Pi Pico W
--  SSD1306 Oled screen
 -  Raspberry Pi Camera v1.3
 -  18650 Battery 2600 mAh
--  Li-ion charger
+-  Solar Lipo Charger & Solar panels or Lipo charger
