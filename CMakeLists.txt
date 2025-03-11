@@ -22,6 +22,10 @@ foreach(SUBDIR ${SUBDIRS})
 	list(APPEND SOURCE_FILES ${GROUP_FILES})
 endforeach()
 
+if(CMAKE_BUILD_TYPE STREQUAL "Release")
+    set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -march=armv8-a -mtune=cortex-a53 -Ofast -pipe -flto -funroll-loops -fomit-frame-pointer")
+endif()
+
 add_executable(${PROGRAM_NAME} ${SOURCE_FILES})
 
 target_include_directories(${PROGRAM_NAME} PUBLIC
