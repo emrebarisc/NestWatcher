@@ -30,7 +30,7 @@ add_executable(${PROGRAM_NAME} ${SOURCE_FILES})
 
 target_include_directories(${PROGRAM_NAME} PUBLIC
 	/usr/include/libcamera
-	${PROJECT_DIR}
+	${PROJECT_DIR}/src
 	${PROJECT_DIR}/${INCLUDE_DIR_NAME}
 	)
 
