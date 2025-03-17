@@ -52,7 +52,7 @@ void CameraManager::Init()
 	auto cameras = libcameraCameraManager_->cameras();
 	if(cameras.empty())
 	{
-		std::cout << "No libcameraCamera_ found!" << std::endl;
+		std::cout << "No camera found!" << std::endl;
 		return;
 	}
 	
@@ -91,9 +91,12 @@ void CameraManager::Init()
 	}
 
 	libcameraCameraStream_ = streamConfig.stream();
-	const std::vector<std::unique_ptr<libcamera::FrameBuffer>>& frameBuffers = frameBufferAllocator_->buffers(libcameraCameraStream_);
-	std::vector<std::unique_ptr<libcamera::Request>> requests;
+}
 
+void CameraManager::Start()
+{
+	const std::vector<std::unique_ptr<libcamera::FrameBuffer>>& frameBuffers = frameBufferAllocator_->buffers(libcameraCameraStream_);
+	
 	for(unsigned int i = 0; i < frameBuffers.size(); ++i)
 	{
 		std::unique_ptr<libcamera::Request> request = libcameraCamera_->createRequest();
@@ -111,23 +114,16 @@ void CameraManager::Init()
 			return;
 		}
 
-		requests.push_back(std::move(request));
+		libcameraRequests_.push_back(std::move(request));
 	}
 
 	libcameraCamera_->requestCompleted.connect(this, &CameraManager::RequestComplete);
 	
 	std::this_thread::sleep_for(std::chrono::duration(3000ms));
-
+	
 	libcameraCamera_->start();
-	for(std::unique_ptr<libcamera::Request>& request : requests)
+	for(std::unique_ptr<libcamera::Request>& request : libcameraRequests_)
 	{
 		libcameraCamera_->queueRequest(request.get());
 	}
-
-
-}
-
-void CameraManager::Tick()
-{
-
 }

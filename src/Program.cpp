@@ -3,7 +3,7 @@
 #include "Managers/CameraManager.h"
 #include "Managers/IOManager.h"
 
-Program* instance_ = nullptr;
+Program* Program::instance_ = nullptr;
 
 Program::Program()
 {
@@ -14,9 +14,24 @@ Program::Program()
 
 	cameraManager_ = new CameraManager();
 	ioManager_ = new IOManager();
+
+	pendingClose_ = false;
 }
 
 Program::~Program()
 {
+	delete ioManager_;
+	delete cameraManager_;
+}
 
+void Program::Init()
+{
+	cameraManager_->Init();
+	ioManager_->Init();
+}
+
+void Program::Start()
+{
+	cameraManager_->Start();
+	while(!pendingClose_);
 }

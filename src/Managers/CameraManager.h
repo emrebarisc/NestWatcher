@@ -3,6 +3,7 @@
 #include "IManager.h"
 
 #include <memory>
+#include <vector>
 
 namespace libcamera
 {
@@ -20,7 +21,7 @@ class CameraManager : public IManager
 		~CameraManager();
 
 		void Init() override;
-		void Tick();
+		void Start();
 
 	protected:
 
@@ -31,4 +32,6 @@ class CameraManager : public IManager
 		std::unique_ptr<libcamera::CameraManager> libcameraCameraManager_{ nullptr };
 		libcamera::FrameBufferAllocator* frameBufferAllocator_{ nullptr }; 
 		libcamera::Stream* libcameraCameraStream_{ nullptr };
+		std::vector<std::unique_ptr<libcamera::Request>> libcameraRequests_;
+
 };
