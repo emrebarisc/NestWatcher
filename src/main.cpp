@@ -6,7 +6,7 @@ int main(void)
 	program->Init();
 	program->Start();
 
-	while(1);
+	while(true);
 
 	return 0;
 }

@@ -68,6 +68,7 @@ void CameraManager::Init()
 
 	streamConfig.size.width = 1920;
 	streamConfig.size.height = 1080;
+	streamConfig.pixelFormat = libcamera::formats::RGB888;
 
 	cameraConfig->validate();
 
