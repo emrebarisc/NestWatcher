@@ -3,6 +3,7 @@
 #include "IManager.h"
 
 #include <string>
+#include <thread>
 
 namespace libcamera
 {
@@ -26,5 +27,8 @@ class IOManager : public IManager
 	protected:
 
 	private:
-
+		void SaveFrameAsync(const std::string& fileName, int width, int height, void* data);
+		
+		std::thread* saveFrameThread_{ nullptr };
+		std::mutex saveFrameMutex_;
 };
