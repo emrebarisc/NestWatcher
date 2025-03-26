@@ -3,7 +3,9 @@
 #include <chrono>
 #include <thread>
 
-#include <libcamera/libcamera.h>
+#include <sys/mman.h>
+
+#include "libcamera/libcamera.h"
 
 #include "Program.h"
 #include "Managers/IOManager.h"
@@ -17,7 +19,7 @@ CameraManager::~CameraManager()
 {
 	libcameraCamera_->stop();
 	frameBufferAllocator_->free(libcameraCameraStream_);
-	delete frameBufferAllocator_;
+	delete frameBufferAllocator_;	
 	libcameraCamera_->release();
 	libcameraCamera_.reset();
 	libcameraCameraManager_->stop();
@@ -34,10 +36,9 @@ void CameraManager::RequestComplete(libcamera::Request* request)
 
 	for(auto frameBufferPair : frameBuffers)
 	{
+		lastlyCapturedFrameMutex_.lock();
 		libcamera::FrameBuffer* frameBuffer = frameBufferPair.second;
-		const libcamera::FrameMetadata& frameMetadata = frameBuffer->metadata();
-		
-		Program::GetInstance()->GetIOManager()->SaveFrameToPNG(frameBuffer, "output.png", 1920, 1080);
+		lastlyCapturedFrameMutex_.unlock();
 	}
 
 	request->reuse(libcamera::Request::ReuseBuffers);
@@ -66,9 +67,9 @@ void CameraManager::Init()
 	libcamera::StreamConfiguration& streamConfig = cameraConfig->at(0);
 	std::cout << "Default viewfinder configuration is: " + streamConfig.toString() << std::endl;
 
-	streamConfig.size.width = 1920;
-	streamConfig.size.height = 1080;
-	streamConfig.pixelFormat = libcamera::formats::RGB888;
+	streamConfig.size.width = cameraWidth_;
+	streamConfig.size.height = cameraHeight_;
+	streamConfig.pixelFormat = pixelFormat_;
 
 	cameraConfig->validate();
 
@@ -128,3 +129,42 @@ void CameraManager::Start()
 		libcameraCamera_->queueRequest(request.get());
 	}
 }
+
+std::shared_ptr<uint8_t[]> CameraManager::GetFrameDataArray()
+{
+	std::lock_guard<std::mutex> frameLock(lastlyCapturedFrameMutex_);
+
+	if (lastlyCapturedFrame_->planes().empty())
+	{
+        	std::cerr << "No planes in buffer!" << std::endl;
+        	return nullptr;
+    	}
+
+    	int fd = lastlyCapturedFrame_->planes()[0].fd.get();
+    	size_t length = lastlyCapturedFrame_->planes()[0].length;
+    	void *data = mmap(nullptr, length, PROT_READ, MAP_SHARED, fd, 0);
+
+	if (data == MAP_FAILED)
+    	{
+        	std::cerr << "Failed to map buffer memory!" << std::endl;
+        	return nullptr;
+    	}
+		
+	const int resolution = cameraWidth_ * cameraHeight_;
+	std::shared_ptr<uint8_t[]> frameDataArray(new uint8_t[resolution * 3]);
+
+	uint32_t* pixelData = reinterpret_cast<uint32_t*>(data);
+
+	for(int pixelIndex = 0; pixelIndex < resolution; ++pixelIndex)
+	{
+		uint32_t pixel = pixelData[pixelIndex];
+		frameDataArray.get()[pixelIndex * 3] = (pixel >> 16) & 0xFF;
+		frameDataArray.get()[pixelIndex * 3 + 1] = (pixel >> 8) & 0xFF;
+		frameDataArray.get()[pixelIndex * 3 + 2] = pixel & 0xFF;
+	}
+	
+	munmap(data, length);
+	
+	return frameDataArray;
+}
+

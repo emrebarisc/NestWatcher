@@ -1,8 +1,5 @@
 #include "IOManager.h"
 
-#include <iomanip>
-#include <sys/mman.h>
-
 #include <libcamera/libcamera.h>
 
 #include <thread>
@@ -14,14 +11,14 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "IO/stb_image_write.h"
 
-void IOManager::SaveFrameAsync(const std::string& fileName, int width, int height, void* data)
+void IOManager::SaveFrameAsync(const std::string& fileName, int width, int height, const std::shared_ptr<uint8_t[]>& data)
 {
 	saveFrameMutex_.lock();
 
 	auto now = std::chrono::system_clock::now();
 	auto msBefore = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 
-    	if (!stbi_write_png(fileName.c_str(), width, height, 3, data, width * 3))
+    	if (!stbi_write_png(fileName.c_str(), width, height, 3, data.get(), width * 3))
 	{
         	std::cerr << "Failed to write PNG file!" << std::endl;
     	}
@@ -31,31 +28,16 @@ void IOManager::SaveFrameAsync(const std::string& fileName, int width, int heigh
 		auto msAfter = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
         	std::cout << "Saved frame as " << fileName << " in " << (msAfter - msBefore) * 0.001f << " seconds."<< std::endl;
     	}
-	
-	munmap(data, width * height * 3);
 
 	saveFrameMutex_.unlock();
 }
 
-void IOManager::SaveFrameToPNG(libcamera::FrameBuffer *buffer, const std::string &fileName, int width, int height)
+void IOManager::SaveFrameToPNG(const std::shared_ptr<uint8_t[]>& frameData, const std::string &fileName, int width, int height)
 {
-    	if (buffer->planes().empty())
+	if(frameData == nullptr)
 	{
-        	std::cerr << "No planes in buffer!" << std::endl;
-        	return;
-    	}
-
-    	int fd = buffer->planes()[0].fd.get();
-    	size_t length = buffer->planes()[0].length;
-    	void *data = mmap(nullptr, length, PROT_READ, MAP_SHARED, fd, 0);
-
-	assert(length == width * height * 3);
- 
-	if (data == MAP_FAILED)
-    	{
-        	std::cerr << "Failed to map buffer memory!" << std::endl;
-        	return;
-    	}
+		return;
+	}
 
 	if(saveFrameThread_ && saveFrameThread_->joinable())
 	{
@@ -64,7 +46,7 @@ void IOManager::SaveFrameToPNG(libcamera::FrameBuffer *buffer, const std::string
 		saveFrameThread_ = nullptr;
 	}
 
-	saveFrameThread_ = new std::thread(&IOManager::SaveFrameAsync, this, fileName, width, height, data);
+	saveFrameThread_ = new std::thread(&IOManager::SaveFrameAsync, this, fileName, width, height, frameData);
 }
 
 

@@ -1,7 +1,9 @@
 #pragma once
 
 class CameraManager;
+class InputManager;
 class IOManager;
+class NetworkManager;
 
 class Program
 {
@@ -26,6 +28,11 @@ class Program
 			return cameraManager_;
 		}
 		
+		InputManager* GetInputManager() const
+		{
+			return inputManager_;
+		}
+
 		IOManager* GetIOManager() const
 		{
 			return ioManager_;
@@ -40,8 +47,10 @@ class Program
 
 		static Program* instance_;
 
-		CameraManager* cameraManager_;
-		IOManager* ioManager_;
+		CameraManager* cameraManager_{ nullptr };
+		InputManager* inputManager_{ nullptr };
+		IOManager* ioManager_{ nullptr };
+		NetworkManager* networkManager_{ nullptr };
 
 		unsigned char pendingClose_ : 1;
 };

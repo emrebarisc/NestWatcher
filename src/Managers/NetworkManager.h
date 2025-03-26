@@ -6,41 +6,14 @@
 
 #include <netinet/in.h>
 
-#define SERVER_IP "192.168.31.154"
+#include "Command.h"
+
+#define SERVER_IP "127.0.0.1"
 
 namespace std
 {
 	class thread;
 }
-
-enum class Command : unsigned char
-{
-	None = 0,
-	Connect,
-	Disconnect,
-
-	StartCamera,
-	StopCamera,
-
-	SetResolution,
-	SetFPS,
-	SetPixelFormat,
-
-	StartRecording,
-	PauseRecording,
-	StopRecording,
-
-	TakeAPhotograph,
-
-	StartStream,
-	StopStream
-};
-
-class CommandMessage
-{
-	Command command;
-	char commandMassage[64];
-};
 
 class NetworkManager : public IManager
 {
