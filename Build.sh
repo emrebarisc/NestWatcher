@@ -4,6 +4,7 @@ runAfterBuild=false
 directoryName=""
 programName="NestWatcher"
 threadCount=4
+runAsSudo=false
 
 for argument in "$@"
 do
@@ -15,6 +16,10 @@ do
 	    else
 		    if [[ "$argument" == "clean" ]]; then
 		    	cleanBuild=true
+		else
+			if [[ "$argument" == "sudo" ]]; then
+				runAsSudo=true
+			fi
 		    fi
 	    fi
     fi
@@ -48,8 +53,10 @@ else
 	fi
 fi
 
-
 if [ "$runAfterBuild" = true ]; then
-	./$programName
+	if [ "$runAsSudo" = true ]; then
+		sudo ./$programName
+	else
+		./$programName
+	fi
 fi
-
