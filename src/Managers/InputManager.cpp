@@ -76,14 +76,14 @@ void InputManager::ExecuteCommand(const CommandMessage& commandMessage)
 					"20%2y%2m%2d%2H%2M%2S", std::localtime(&time));
 
 			std::string fileName = "Shot_";
-			fileName += timeString;
+			fileName += std::string(timeString) + ".png";
 			std::cout << timeString << std::endl;
 
-			/*ioManager->SaveFrameToPNG(
+			ioManager->SaveFrameToPNG(
 					cameraManager->GetFrameDataArray(),
 					fileName,
 					cameraManager->GetCameraWidth(),
-					cameraManager->GetCameraHeight());*/
+					cameraManager->GetCameraHeight());
 			break;
 		}
 		case Command::StartStream:

@@ -37,7 +37,7 @@ void CameraManager::RequestComplete(libcamera::Request* request)
 	for(auto frameBufferPair : frameBuffers)
 	{
 		lastlyCapturedFrameMutex_.lock();
-		libcamera::FrameBuffer* frameBuffer = frameBufferPair.second;
+		lastlyCapturedFrame_ = frameBufferPair.second;
 		lastlyCapturedFrameMutex_.unlock();
 	}
 
@@ -134,6 +134,11 @@ std::shared_ptr<uint8_t[]> CameraManager::GetFrameDataArray()
 {
 	std::lock_guard<std::mutex> frameLock(lastlyCapturedFrameMutex_);
 
+	if(!lastlyCapturedFrame_)
+	{
+		return nullptr;
+	}
+
 	if (lastlyCapturedFrame_->planes().empty())
 	{
         	std::cerr << "No planes in buffer!" << std::endl;
@@ -149,7 +154,7 @@ std::shared_ptr<uint8_t[]> CameraManager::GetFrameDataArray()
         	std::cerr << "Failed to map buffer memory!" << std::endl;
         	return nullptr;
     	}
-		
+	
 	const int resolution = cameraWidth_ * cameraHeight_;
 	std::shared_ptr<uint8_t[]> frameDataArray(new uint8_t[resolution * 3]);
 
@@ -162,7 +167,7 @@ std::shared_ptr<uint8_t[]> CameraManager::GetFrameDataArray()
 		frameDataArray.get()[pixelIndex * 3 + 1] = (pixel >> 8) & 0xFF;
 		frameDataArray.get()[pixelIndex * 3 + 2] = pixel & 0xFF;
 	}
-	
+
 	munmap(data, length);
 	
 	return frameDataArray;
