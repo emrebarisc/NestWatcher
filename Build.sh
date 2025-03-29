@@ -3,7 +3,7 @@ cleanBuild=false
 runAfterBuild=false
 directoryName=""
 programName="NestWatcher"
-threadCount=4
+threadCount=1
 runAsSudo=false
 
 for argument in "$@"

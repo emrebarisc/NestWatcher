@@ -11,6 +11,11 @@
 #define STB_IMAGE_WRITE_IMPLEMENTATION
 #include "IO/stb_image_write.h"
 
+IOManager::~IOManager()
+{
+	delete saveFrameThread_;
+}
+
 void IOManager::SaveFrameAsync(const std::string& fileName, int width, int height, const std::shared_ptr<uint8_t[]>& data)
 {
 	saveFrameMutex_.lock();
@@ -39,7 +44,7 @@ void IOManager::SaveFrameToPNG(const std::shared_ptr<uint8_t[]>& frameData, cons
 		return;
 	}
 
-	if(saveFrameThread_ && saveFrameThread_->joinable())
+	/*(saveFrameThread_ && saveFrameThread_->joinable())
 	{
 		saveFrameThread_->join();
 		delete saveFrameThread_;
@@ -47,6 +52,8 @@ void IOManager::SaveFrameToPNG(const std::shared_ptr<uint8_t[]>& frameData, cons
 	}
 
 	saveFrameThread_ = new std::thread(&IOManager::SaveFrameAsync, this, fileName, width, height, frameData);
+	*/
+	std::make_shared<std::thread*>(new std::thread(&IOManager::SaveFrameAsync, this, fileName, width, height, frameData));
 }
 
 

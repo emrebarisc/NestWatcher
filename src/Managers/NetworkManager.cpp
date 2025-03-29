@@ -109,16 +109,14 @@ void NetworkManager::StartListeningCommandAddressAsync()
 
 		std::cout << "Connection established with " << inet_ntoa(clientIP_) << std::endl;
 
-		if(0 < recv(clientSocket, &commandMessage, sizeof(commandMessage), 0))
+		while(0 < recv(clientSocket, &commandMessage, sizeof(commandMessage), 0))
 		{
 			inputManager->ExecuteCommand(commandMessage);
 
 			std::cout << "\tCommand: " << (int)commandMessage.command << "\tCommand message: " << commandMessage.commandMessage << std::endl;
 		}
-		else
-		{
-			break;
-		}
+
+		close(clientSocket);
 	}
 }
 

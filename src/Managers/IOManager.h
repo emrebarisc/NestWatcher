@@ -16,7 +16,7 @@ class IOManager : public IManager
 	public:
 		IOManager() = default;
 		IOManager(const IOManager& other) = default;
-		~IOManager() = default;
+		~IOManager();
 
 		IOManager& operator=(const IOManager& other) = default;
 
