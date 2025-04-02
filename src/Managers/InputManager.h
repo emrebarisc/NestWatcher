@@ -2,7 +2,7 @@
 
 #include "IManager.h"
 
-#include "Command.h"
+#include "Network/Command.h"
 
 class InputManager : public IManager
 {

@@ -2,11 +2,17 @@
 
 #include <arpa/inet.h>
 
+#include <cstring>
 #include <iostream>
 #include <thread>
 
 #include "Program.h"
+#include "Managers/CameraManager.h"
 #include "Managers/InputManager.h"
+
+#include "Network/Command.h"
+#include "Network/ImageCommand.h"
+#include "Network/ImageData.h"
 
 NetworkManager::NetworkManager()
 {
@@ -25,7 +31,13 @@ NetworkManager::~NetworkManager()
 		close(dataSocket_);
 	}
 
+	if(0 <= cameraImageCommandSenderSocket_)
+	{
+		close(cameraImageCommandSenderSocket_);
+	}
+
 	delete listenerThread_;
+	delete imageTransmitterThread_;
 }
 
 void NetworkManager::Init()
@@ -41,20 +53,6 @@ void NetworkManager::Init()
 	{
 		std::cerr << "Failed to bind command socket with error: " << commandSocketBindResult  << std::endl;
 		close(commandSocket_);
-		return;
-	}
-
-	dataSocket_ = socket(AF_INET, SOCK_DGRAM, 0);
-
-	dataAddress_.sin_family = AF_INET;
-	dataAddress_.sin_port = htons(DATA_PORT);
-	dataAddress_.sin_addr.s_addr = inet_addr(SERVER_IP);
-	
-	int dataSocketBindResult = bind(dataSocket_, (struct sockaddr*)&dataAddress_, sizeof(dataAddress_)); 
-	if(dataSocketBindResult != 0)
-	{
-		std::cerr << "Failed to bind data socket with error: " << dataSocketBindResult  << std::endl;
-		close(dataSocket_);
 		return;
 	}
 }
@@ -75,6 +73,25 @@ void NetworkManager::StartListeningCommandAddress()
 	catch(const std::exception& exception)
 	{
 		std::cerr << "Failed to start listener thread: " << exception.what() << std::endl;
+		return;
+	}
+}
+
+void NetworkManager::TransmitCameraImage()
+{
+	if(imageTransmitterThread_)
+	{
+		std::cout << "Already started transmitting camera image!" << std::endl;
+		return;	
+	}
+
+	try
+	{
+		imageTransmitterThread_ = new std::thread(&NetworkManager::TransmitCameraImageAsync, this);
+	}
+	catch(const std::exception& exception)
+	{
+		std::cerr << "Failed creating start transmitting camera image thread: " << exception.what() << std::endl;
 		return;
 	}
 }
@@ -120,3 +137,64 @@ void NetworkManager::StartListeningCommandAddressAsync()
 	}
 }
 
+void NetworkManager::TransmitCameraImageAsync()
+{
+	cameraImageCommandSenderSocket_ = socket(AF_INET, SOCK_STREAM, 0);
+
+	cameraImageCommandSenderAddress_.sin_family = AF_INET;
+	cameraImageCommandSenderAddress_.sin_port = htons(COMMAND_PORT);
+	cameraImageCommandSenderAddress_.sin_addr.s_addr = INADDR_ANY;//inet_addr(SERVER_IP);
+	
+	int commandSocketBindResult = connect(cameraImageCommandSenderSocket_, (const sockaddr*)&cameraImageCommandSenderAddress_, sizeof(cameraImageCommandSenderAddress_)); 
+	if(commandSocketBindResult != 0)
+	{
+		std::cerr << "Failed to connect camera image command  socket with error: " << commandSocketBindResult  << std::endl;
+		close(cameraImageCommandSenderSocket_);
+		return;
+	}
+
+	dataSocket_ = socket(AF_INET, SOCK_DGRAM, 0);
+
+	dataAddress_.sin_family = AF_INET;
+	dataAddress_.sin_port = htons(DATA_PORT);
+	dataAddress_.sin_addr.s_addr = INADDR_ANY;
+	
+	int dataSocketBindResult = connect(dataSocket_, (struct sockaddr*)&dataAddress_, sizeof(dataAddress_)); 
+	if(dataSocketBindResult != 0)
+	{
+		std::cerr << "Failed to bind data socket with error: " << dataSocketBindResult  << std::endl;
+		close(dataSocket_);
+		return;
+	}
+
+	CameraManager* cameraManager = Program::GetInstance()->GetCameraManager();
+	if(!cameraManager)
+	{
+		return;
+	}
+
+	std::shared_ptr<uint8_t[]> currentFrame = cameraManager->GetFrameDataArray();
+
+	int cameraWidth = cameraManager->GetCameraWidth();
+
+	ImageData imageData;
+	imageData.row = new uint8_t[cameraWidth];
+
+	while(true)
+	{
+		ImageCommandMessage imageCommandMessage;
+		imageCommandMessage.command = ImageCommand::FrameTransmissionStarted;
+		send(cameraImageCommandSenderSocket_, (char*)&imageCommandMessage, sizeof(imageCommandMessage), 0);
+
+		for(int rowIndex = 0; rowIndex < cameraManager->GetCameraHeight(); ++rowIndex)
+		{
+			imageData.rowIndex = rowIndex;
+			std::memcpy(imageData.row, (const void*)(currentFrame.get())[rowIndex * cameraWidth], cameraWidth * 3);
+			
+			send(dataSocket_, (char*)&imageData, sizeof(ImageData::rowIndex) + cameraWidth * 3, 0);
+		}
+
+		imageCommandMessage.command = ImageCommand::FrameTransmissionEnded;
+		send(cameraImageCommandSenderSocket_, (char*)&imageCommandMessage, sizeof(imageCommandMessage), 0);
+	}
+}

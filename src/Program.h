@@ -38,6 +38,11 @@ class Program
 			return ioManager_;
 		}
 
+		NetworkManager* GetNetworkManager() const
+		{
+			return networkManager_;
+		}
+
 	protected:
 
 	private:

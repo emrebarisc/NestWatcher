@@ -5,6 +5,7 @@
 #include "Program.h"
 #include "Managers/CameraManager.h"
 #include "Managers/IOManager.h"
+#include "Managers/NetworkManager.h"
 
 InputManager::InputManager()
 {
@@ -20,6 +21,7 @@ void InputManager::ExecuteCommand(const CommandMessage& commandMessage)
 	Program* program = Program::GetInstance();
 	CameraManager* cameraManager = program->GetCameraManager();
 	IOManager* ioManager = program->GetIOManager();
+	NetworkManager* networkManager = program->GetNetworkManager();
 
 	switch(commandMessage.command)
 	{
@@ -88,6 +90,7 @@ void InputManager::ExecuteCommand(const CommandMessage& commandMessage)
 		}
 		case Command::StartStream:
 		{
+			networkManager->TransmitCameraImage();
 			break;
 		}
 		case Command::StopStream:

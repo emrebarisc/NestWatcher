@@ -10,6 +10,9 @@
 #include "Program.h"
 #include "Managers/IOManager.h"
 
+#include "Network/Command.h"
+#include "Network/ImageData.h"
+
 using namespace std::chrono_literals;
 
 static std::shared_ptr<libcamera::Camera> libcameraCamera_;
