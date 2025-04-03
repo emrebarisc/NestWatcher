@@ -143,7 +143,7 @@ void NetworkManager::TransmitCameraImageAsync()
 
 	cameraImageCommandSenderAddress_.sin_family = AF_INET;
 	cameraImageCommandSenderAddress_.sin_port = htons(COMMAND_PORT);
-	cameraImageCommandSenderAddress_.sin_addr.s_addr = INADDR_ANY;//inet_addr(SERVER_IP);
+	cameraImageCommandSenderAddress_.sin_addr.s_addr = clientIP_.s_addr;//inet_addr(SERVER_IP);
 	
 	int commandSocketBindResult = connect(cameraImageCommandSenderSocket_, (const sockaddr*)&cameraImageCommandSenderAddress_, sizeof(cameraImageCommandSenderAddress_)); 
 	if(commandSocketBindResult != 0)
@@ -157,7 +157,7 @@ void NetworkManager::TransmitCameraImageAsync()
 
 	dataAddress_.sin_family = AF_INET;
 	dataAddress_.sin_port = htons(DATA_PORT);
-	dataAddress_.sin_addr.s_addr = INADDR_ANY;
+	dataAddress_.sin_addr.s_addr = clientIP_.s_addr;
 	
 	int dataSocketBindResult = connect(dataSocket_, (struct sockaddr*)&dataAddress_, sizeof(dataAddress_)); 
 	if(dataSocketBindResult != 0)
@@ -189,12 +189,15 @@ void NetworkManager::TransmitCameraImageAsync()
 		for(int rowIndex = 0; rowIndex < cameraManager->GetCameraHeight(); ++rowIndex)
 		{
 			imageData.rowIndex = rowIndex;
-			std::memcpy(imageData.row, (const void*)(currentFrame.get())[rowIndex * cameraWidth], cameraWidth * 3);
+			uint8_t* currentFrameRaw = currentFrame.get();
+			std::memcpy(imageData.row, (const void*)(currentFrameRaw + rowIndex * cameraWidth), cameraWidth * 3);
 			
 			send(dataSocket_, (char*)&imageData, sizeof(ImageData::rowIndex) + cameraWidth * 3, 0);
 		}
 
 		imageCommandMessage.command = ImageCommand::FrameTransmissionEnded;
 		send(cameraImageCommandSenderSocket_, (char*)&imageCommandMessage, sizeof(imageCommandMessage), 0);
+		
+		std::this_thread::sleep_for(std::chrono::milliseconds(100));
 	}
 }
