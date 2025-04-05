@@ -139,7 +139,9 @@ void NetworkManager::StartListeningCommandAddressAsync()
 
 void NetworkManager::TransmitCameraImageAsync()
 {
-	cameraImageCommandSenderSocket_ = socket(AF_INET, SOCK_STREAM, 0);
+	std::cout << "NetworkManager::TransmitCameraImageAsync()" << std::endl;
+
+/*	cameraImageCommandSenderSocket_ = socket(AF_INET, SOCK_STREAM, 0);
 
 	cameraImageCommandSenderAddress_.sin_family = AF_INET;
 	cameraImageCommandSenderAddress_.sin_port = htons(COMMAND_PORT);
@@ -152,21 +154,7 @@ void NetworkManager::TransmitCameraImageAsync()
 		close(cameraImageCommandSenderSocket_);
 		return;
 	}
-
-	dataSocket_ = socket(AF_INET, SOCK_DGRAM, 0);
-
-	dataAddress_.sin_family = AF_INET;
-	dataAddress_.sin_port = htons(DATA_PORT);
-	dataAddress_.sin_addr.s_addr = clientIP_.s_addr;
-	
-	int dataSocketBindResult = connect(dataSocket_, (struct sockaddr*)&dataAddress_, sizeof(dataAddress_)); 
-	if(dataSocketBindResult != 0)
-	{
-		std::cerr << "Failed to bind data socket with error: " << dataSocketBindResult  << std::endl;
-		close(dataSocket_);
-		return;
-	}
-
+*/
 	CameraManager* cameraManager = Program::GetInstance()->GetCameraManager();
 	if(!cameraManager)
 	{
@@ -180,11 +168,18 @@ void NetworkManager::TransmitCameraImageAsync()
 	ImageData imageData;
 	imageData.row = new uint8_t[cameraWidth];
 
+	dataSocket_ = socket(AF_INET, SOCK_DGRAM, 0);
+	dataAddress_.sin_family = AF_INET;
+	dataAddress_.sin_port = htons(DATA_PORT);
+	dataAddress_.sin_addr.s_addr = clientIP_.s_addr;
+	
 	while(true)
 	{
 		ImageCommandMessage imageCommandMessage;
 		imageCommandMessage.command = ImageCommand::FrameTransmissionStarted;
 		send(cameraImageCommandSenderSocket_, (char*)&imageCommandMessage, sizeof(imageCommandMessage), 0);
+		
+		std::cerr << "Sending UDP to " << inet_ntoa(dataAddress_.sin_addr) << ":" << ntohs(dataAddress_.sin_port) << std::endl;
 
 		for(int rowIndex = 0; rowIndex < cameraManager->GetCameraHeight(); ++rowIndex)
 		{
@@ -192,8 +187,10 @@ void NetworkManager::TransmitCameraImageAsync()
 			uint8_t* currentFrameRaw = currentFrame.get();
 			std::memcpy(imageData.row, (const void*)(currentFrameRaw + rowIndex * cameraWidth), cameraWidth * 3);
 			
-			send(dataSocket_, (char*)&imageData, sizeof(ImageData::rowIndex) + cameraWidth * 3, 0);
+			sendto(dataSocket_, (char*)&imageData, sizeof(ImageData::rowIndex) + cameraWidth * 3, 0, (sockaddr*)&dataAddress_, sizeof(dataAddress_));
 		}
+
+		std::cout << "Sent " << sizeof(ImageData::rowIndex) + cameraWidth * 3 << " bytes of data" << std::endl;
 
 		imageCommandMessage.command = ImageCommand::FrameTransmissionEnded;
 		send(cameraImageCommandSenderSocket_, (char*)&imageCommandMessage, sizeof(imageCommandMessage), 0);
