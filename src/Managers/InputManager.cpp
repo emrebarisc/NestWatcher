@@ -78,7 +78,7 @@ void InputManager::ExecuteCommand(const CommandMessage& commandMessage)
 					"20%2y%2m%2d%2H%2M%2S", std::localtime(&time));
 
 			std::string fileName = "Shot_";
-			fileName += std::string(timeString) + ".png";
+			fileName += std::string(timeString) + ".jpg";
 			std::cout << timeString << std::endl;
 
 			ioManager->SaveFrameToPNG(

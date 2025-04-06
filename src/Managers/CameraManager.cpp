@@ -17,7 +17,35 @@ using namespace std::chrono_literals;
 
 static std::shared_ptr<libcamera::Camera> libcameraCamera_;
 
-CameraManager::CameraManager(){}
+CameraManager::CameraManager()
+{
+	pixelDepth_ = (int)pixelFormat_ % 10;
+
+	switch(pixelFormat_)
+	{
+		case PixelFormat::R8:
+			libcameraPixelFormat_ = libcamera::formats::XRGB8888;
+			break;
+		case PixelFormat::YUV420:
+			libcameraPixelFormat_ = libcamera::formats::YUV420;
+			break;
+		case PixelFormat::RGB565:
+			libcameraPixelFormat_ = libcamera::formats::RGB565;
+			break;
+		case PixelFormat::RGB888:
+			libcameraPixelFormat_ = libcamera::formats::RGB888;
+			break;
+		case PixelFormat::XRGB8888:
+			libcameraPixelFormat_ = libcamera::formats::XRGB8888;
+			break;
+		case PixelFormat::RGBA8888:
+			libcameraPixelFormat_ = libcamera::formats::RGBA8888;
+			break;
+		default:
+			break;
+	}
+}
+
 CameraManager::~CameraManager()
 {
 	libcameraCamera_->stop();
@@ -72,7 +100,7 @@ void CameraManager::Init()
 
 	streamConfig.size.width = cameraWidth_;
 	streamConfig.size.height = cameraHeight_;
-	streamConfig.pixelFormat = pixelFormat_;
+	streamConfig.pixelFormat = libcameraPixelFormat_;
 
 	cameraConfig->validate();
 
@@ -162,6 +190,8 @@ std::shared_ptr<uint8_t[]> CameraManager::GetFrameDataArray()
 	std::shared_ptr<uint8_t[]> frameDataArray(new uint8_t[resolution * 3]);
 
 	uint32_t* pixelData = reinterpret_cast<uint32_t*>(data);
+
+
 
 	for(int pixelIndex = 0; pixelIndex < resolution; ++pixelIndex)
 	{

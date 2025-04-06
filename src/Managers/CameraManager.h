@@ -7,17 +7,20 @@
 
 #include "libcamera/libcamera.h"
 
-/*
-namespace libcamera
+enum class PixelFormat : uint8_t
 {
-	class Camera;
-	class CameraManager;
-	class Frame;
-	class FrameBufferAllocator;
-	class Request;
-	class Stream;
-}
-*/
+	None = 0,
+
+	R8 = 10,
+
+
+	YUV420 = 30,
+	RGB565,
+	RGB888,
+	
+	XRGB8888 = 40,
+	RGBA8888
+};
 
 class CameraManager : public IManager
 {
@@ -56,6 +59,8 @@ class CameraManager : public IManager
 
 		int cameraWidth_{ 1920 };
 		int cameraHeight_{ 1080 };
+		int pixelDepth_ { 4 };
 
-		libcamera::PixelFormat pixelFormat_{ libcamera::formats::XRGB8888 };
+		PixelFormat pixelFormat_{ PixelFormat::XRGB8888 };
+		libcamera::PixelFormat libcameraPixelFormat_{ libcamera::formats::XRGB8888 };
 };

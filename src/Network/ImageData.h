@@ -10,5 +10,6 @@ public:
 	}
 
 	int rowIndex;
+	int sectionIndex;
 	uint8_t* row;
 };

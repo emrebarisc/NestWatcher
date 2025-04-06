@@ -23,7 +23,7 @@ void IOManager::SaveFrameAsync(const std::string& fileName, int width, int heigh
 	auto now = std::chrono::system_clock::now();
 	auto msBefore = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 
-    	if (!stbi_write_png(fileName.c_str(), width, height, 3, data.get(), width * 3))
+    	if (!stbi_write_jpg(fileName.c_str(), width, height, 3, data.get(), 100))
 	{
         	std::cerr << "Failed to write PNG file!" << std::endl;
     	}
