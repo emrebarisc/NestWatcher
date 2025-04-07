@@ -133,6 +133,12 @@ void NetworkManager::StartListeningCommandAddressAsync()
 			std::cout << "\tCommand: " << (int)commandMessage.command << "\tCommand message: " << commandMessage.commandMessage << std::endl;
 		}
 
+		
+		std::cout << "Connection closed with " << inet_ntoa(clientIP_) << std::endl;
+	
+		transmittingCameraImage_ = false;
+		imageTransmitterThread_ = nullptr;
+
 		close(clientSocket);
 	}
 }
@@ -166,7 +172,6 @@ void NetworkManager::TransmitCameraImageAsync()
 	
 	int sectionDataSize = cameraWidth;
 
-
 	ImageData imageData;
 
 	dataSocket_ = socket(AF_INET, SOCK_DGRAM, 0);
@@ -176,7 +181,9 @@ void NetworkManager::TransmitCameraImageAsync()
 
 	std::cout << "Started sending camera image." << std::endl;
 
-	while(true)
+	transmittingCameraImage_ = true;
+
+	while(transmittingCameraImage_)
 	{
 		//ImageCommandMessage imageCommandMessage;
 		//imageCommandMessage.command = ImageCommand::FrameTransmissionStarted;
@@ -184,7 +191,7 @@ void NetworkManager::TransmitCameraImageAsync()
 
 		std::shared_ptr<uint8_t[]> currentFrame = cameraManager->GetFrameDataArray();
 
-		for(int rowIndex = 0; rowIndex < cameraManager->GetCameraHeight(); ++rowIndex)
+		for(int rowIndex = 0; transmittingCameraImage_ && rowIndex < cameraManager->GetCameraHeight(); ++rowIndex)
 		{
 			imageData.rowIndex = rowIndex;
 
@@ -203,7 +210,10 @@ void NetworkManager::TransmitCameraImageAsync()
 	
 		//imageCommandMessage.command = ImageCommand::FrameTransmissionEnded;
 		//send(cameraImageCommandSenderSocket_, (char*)&imageCommandMessage, sizeof(imageCommandMessage), 0);
-		
+
+
+		std::cout << "frame sent" << std::endl;
+
 		std::this_thread::yield();
 	}
 }

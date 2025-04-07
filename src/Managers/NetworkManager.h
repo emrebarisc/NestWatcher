@@ -2,6 +2,7 @@
 
 #include "Managers/IManager.h"
 
+#include <atomic>
 #include <string>
 
 #include <netinet/in.h>
@@ -46,4 +47,6 @@ class NetworkManager : public IManager
 
 		std::thread* listenerThread_{ nullptr };
 		std::thread* imageTransmitterThread_{ nullptr };
+
+		std::atomic_bool transmittingCameraImage_{ ATOMIC_VAR_INIT(false) };
 };
