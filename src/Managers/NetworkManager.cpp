@@ -137,48 +137,8 @@ void NetworkManager::StartListeningCommandAddressAsync()
 	}
 }
 
-
-const int WIDTH = 1920;
-const int HEIGHT = 1080;
-const int CHANNELS = 3;
-const int TILE_COLS = 16;
-const int TILE_ROWS = 9;
-const int TILE_WIDTH = WIDTH / TILE_COLS;
-const int TILE_HEIGHT = HEIGHT / TILE_ROWS;
-const int TOTAL_PIXELS = WIDTH * HEIGHT * CHANNELS;
-
-unsigned char image[TOTAL_PIXELS];
-void GenerateColorPaletteImage() {
-
-
-    for (int row = 0; row < TILE_ROWS; ++row) {
-        for (int col = 0; col < TILE_COLS; ++col) {
-            // Color based on position in palette grid (rough HSV-like variation)
-            float hue = (float)col / TILE_COLS;
-            float brightness = 0.5f + 0.5f * ((float)row / TILE_ROWS);
-
-            unsigned char r = (unsigned char)(255 * brightness * hue);
-            unsigned char g = (unsigned char)(255 * brightness * (1.0f - hue));
-            unsigned char b = (unsigned char)(255 * (1.0f - brightness));
-
-            for (int y = row * TILE_HEIGHT; y < (row + 1) * TILE_HEIGHT; ++y) {
-                for (int x = col * TILE_WIDTH; x < (col + 1) * TILE_WIDTH; ++x) {
-                    int idx = (y * WIDTH + x) * CHANNELS;
-                    image[idx]     = r;
-                    image[idx + 1] = g;
-                    image[idx + 2] = b;
-                }
-            }
-        }
-    }
-}
-
 void NetworkManager::TransmitCameraImageAsync()
-{
-	GenerateColorPaletteImage();
-
-	std::cout << "NetworkManager::TransmitCameraImageAsync()" << std::endl;
-
+{	
 /*	cameraImageCommandSenderSocket_ = socket(AF_INET, SOCK_STREAM, 0);
 
 	cameraImageCommandSenderAddress_.sin_family = AF_INET;
@@ -199,51 +159,51 @@ void NetworkManager::TransmitCameraImageAsync()
 		return;
 	}
 
-	std::shared_ptr<uint8_t[]> currentFrame = cameraManager->GetFrameDataArray();
 
 	int cameraWidth = cameraManager->GetCameraWidth();
-	int transmittedDataSize = sizeof(ImageData::rowIndex) + cameraWidth;
+	int transmittedDataSize = sizeof(ImageData::rowIndex) + sizeof(ImageData::sectionIndex)  + cameraWidth;
+	int colorDepth = 3;
 	
 	int sectionDataSize = cameraWidth;
 
 
 	ImageData imageData;
-	imageData.row = new uint8_t[cameraWidth];
 
 	dataSocket_ = socket(AF_INET, SOCK_DGRAM, 0);
 	dataAddress_.sin_family = AF_INET;
 	dataAddress_.sin_port = htons(DATA_PORT);
 	dataAddress_.sin_addr.s_addr = clientIP_.s_addr;
 
+	std::cout << "Started sending camera image." << std::endl;
+
 	while(true)
 	{
-		ImageCommandMessage imageCommandMessage;
-		imageCommandMessage.command = ImageCommand::FrameTransmissionStarted;
-		send(cameraImageCommandSenderSocket_, (char*)&imageCommandMessage, sizeof(imageCommandMessage), 0);
-		
-		std::cerr << "Sending UDP to " << inet_ntoa(dataAddress_.sin_addr) << ":" << ntohs(dataAddress_.sin_port) << std::endl;
+		//ImageCommandMessage imageCommandMessage;
+		//imageCommandMessage.command = ImageCommand::FrameTransmissionStarted;
+		//send(cameraImageCommandSenderSocket_, (char*)&imageCommandMessage, sizeof(imageCommandMessage), 0);
+
+		std::shared_ptr<uint8_t[]> currentFrame = cameraManager->GetFrameDataArray();
 
 		for(int rowIndex = 0; rowIndex < cameraManager->GetCameraHeight(); ++rowIndex)
 		{
 			imageData.rowIndex = rowIndex;
 
-			for(int sectionIndex = 0; sectionIndex < 3; ++sectionIndex)
+			for(int sectionIndex = 0; sectionIndex < colorDepth; ++sectionIndex)
 			{
 				imageData.sectionIndex = sectionIndex;
-				//uint8_t* currentFrameRaw = currentFrame.get();
-				uint8_t* currentFrameRaw = image;
 				
-				std::memcpy(imageData.row, (const void*)(currentFrameRaw + sectionDataSize * (rowIndex + sectionIndex)), sectionDataSize);
+				uint8_t* currentFrameRaw = currentFrame.get();
 				
-				sendto(dataSocket_, (char*)&imageData, transmittedDataSize, 0, (sockaddr*)&dataAddress_, sizeof(dataAddress_));
+				int pixelRowStart = rowIndex * cameraWidth * colorDepth;
+				std::memcpy(imageData.row, currentFrameRaw + pixelRowStart + sectionIndex * sectionDataSize, sectionDataSize);
+
+				sendto(dataSocket_, &imageData, transmittedDataSize, 0, (sockaddr*)&dataAddress_, sizeof(dataAddress_));
 			}
 		}
-
-		std::cout << "Sent " << sizeof(ImageData::rowIndex) + cameraWidth << " bytes of data" << std::endl;
-
+	
 		//imageCommandMessage.command = ImageCommand::FrameTransmissionEnded;
 		//send(cameraImageCommandSenderSocket_, (char*)&imageCommandMessage, sizeof(imageCommandMessage), 0);
 		
-		std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		std::this_thread::yield();
 	}
 }
