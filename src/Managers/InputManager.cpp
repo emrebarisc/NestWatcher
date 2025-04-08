@@ -79,7 +79,6 @@ void InputManager::ExecuteCommand(const CommandMessage& commandMessage)
 
 			std::string fileName = "Shot_";
 			fileName += std::string(timeString) + ".jpg";
-			std::cout << timeString << std::endl;
 
 			ioManager->SaveFrameToPNG(
 					cameraManager->GetFrameDataArray(),
