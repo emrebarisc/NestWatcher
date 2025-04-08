@@ -10,8 +10,7 @@
 #include "Program.h"
 #include "Managers/IOManager.h"
 
-#include "Network/Command.h"
-#include "Network/ImageData.h"
+#include "Camera/CameraMotionDetection.h"
 
 using namespace std::chrono_literals;
 
@@ -19,7 +18,7 @@ static std::shared_ptr<libcamera::Camera> libcameraCamera_;
 
 CameraManager::CameraManager()
 {
-	pixelDepth_ = (int)pixelFormat_ % 10;
+	colorDepth_ = (int)pixelFormat_ % 10;
 
 	switch(pixelFormat_)
 	{
@@ -44,10 +43,14 @@ CameraManager::CameraManager()
 		default:
 			break;
 	}
+
+	cameraMotionDetection_ = new CameraMotionDetection();
 }
 
 CameraManager::~CameraManager()
 {
+	delete cameraMotionDetection_;
+
 	libcameraCamera_->stop();
 	frameBufferAllocator_->free(libcameraCameraStream_);
 	delete frameBufferAllocator_;	
@@ -159,6 +162,8 @@ void CameraManager::Start()
 	{
 		libcameraCamera_->queueRequest(request.get());
 	}
+
+	cameraMotionDetection_->Start();
 }
 
 std::shared_ptr<uint8_t[]> CameraManager::GetFrameDataArray()

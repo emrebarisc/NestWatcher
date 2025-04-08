@@ -7,6 +7,8 @@
 
 #include "libcamera/libcamera.h"
 
+class CameraMotionDetection;
+
 enum class PixelFormat : uint8_t
 {
 	None = 0,
@@ -43,10 +45,17 @@ class CameraManager : public IManager
 			return cameraHeight_;
 		}
 
+		int GetColorDepth() const
+		{
+			return colorDepth_;
+		}
+
 	protected:
 
 	private:
 		void RequestComplete(libcamera::Request* request);
+
+		CameraMotionDetection* cameraMotionDetection_{ nullptr };
 
 		std::shared_ptr<libcamera::Camera> libcameraCamera_{ nullptr };
 		std::unique_ptr<libcamera::CameraManager> libcameraCameraManager_{ nullptr };
@@ -59,7 +68,7 @@ class CameraManager : public IManager
 
 		int cameraWidth_{ 1920 };
 		int cameraHeight_{ 1080 };
-		int pixelDepth_ { 4 };
+		int colorDepth_ { 4 };
 
 		PixelFormat pixelFormat_{ PixelFormat::XRGB8888 };
 		libcamera::PixelFormat libcameraPixelFormat_{ libcamera::formats::XRGB8888 };
