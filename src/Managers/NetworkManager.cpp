@@ -211,9 +211,6 @@ void NetworkManager::TransmitCameraImageAsync()
 		//imageCommandMessage.command = ImageCommand::FrameTransmissionEnded;
 		//send(cameraImageCommandSenderSocket_, (char*)&imageCommandMessage, sizeof(imageCommandMessage), 0);
 
-
-		std::cout << "frame sent" << std::endl;
-
 		std::this_thread::yield();
 	}
 }
