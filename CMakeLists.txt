@@ -12,6 +12,7 @@ set(INCLUDE_DIR_NAME "inc")
 
 set(SUBDIRS
 	${SOURCE_DIR_NAME}
+	${SOURCE_DIR_NAME}/Camera
 	${SOURCE_DIR_NAME}/Managers
 	${SOURCE_DIR_NAME}/Network)
 
