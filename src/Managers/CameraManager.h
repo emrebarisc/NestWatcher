@@ -9,6 +9,11 @@
 
 class CameraMotionDetection;
 
+constexpr int LOW_QUALITY_RESOLUTION_WIDTH = 1280;
+constexpr int LOW_QUALITY_RESOLUTION_HEIGHT = 720;
+constexpr int LOW_QUALITY_COLOR_DEPTH = 1;
+constexpr int LOW_QUALITY_RESOLUTION = LOW_QUALITY_RESOLUTION_WIDTH * LOW_QUALITY_RESOLUTION_HEIGHT;
+
 enum class PixelFormat : uint8_t
 {
 	None = 0,
@@ -34,6 +39,7 @@ class CameraManager : public IManager
 		void Start();
 
 		std::shared_ptr<uint8_t[]> GetFrameDataArray();
+		std::shared_ptr<uint8_t[]> GetFrameDataArrayLowQuality();
 
 		int GetCameraWidth() const
 		{

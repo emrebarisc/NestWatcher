@@ -196,8 +196,6 @@ std::shared_ptr<uint8_t[]> CameraManager::GetFrameDataArray()
 
 	uint32_t* pixelData = reinterpret_cast<uint32_t*>(data);
 
-
-
 	for(int pixelIndex = 0; pixelIndex < resolution; ++pixelIndex)
 	{
 		uint32_t pixel = pixelData[pixelIndex];
@@ -211,3 +209,51 @@ std::shared_ptr<uint8_t[]> CameraManager::GetFrameDataArray()
 	return frameDataArray;
 }
 
+std::shared_ptr<uint8_t[]> CameraManager::GetFrameDataArrayLowQuality()
+{
+	std::lock_guard<std::mutex> frameLock(lastlyCapturedFrameMutex_);
+
+	if(!lastlyCapturedFrame_)
+	{
+		return nullptr;
+	}
+
+	if (lastlyCapturedFrame_->planes().empty())
+	{
+        	std::cerr << "No planes in buffer!" << std::endl;
+        	return nullptr;
+    	}
+
+    	int fd = lastlyCapturedFrame_->planes()[0].fd.get();
+    	size_t length = lastlyCapturedFrame_->planes()[0].length;
+    	void *data = mmap(nullptr, length, PROT_READ, MAP_SHARED, fd, 0);
+
+	if (data == MAP_FAILED)
+    	{
+        	std::cerr << "Failed to map buffer memory!" << std::endl;
+        	return nullptr;
+    	}
+	
+	int highQualityResolution = cameraWidth_ * cameraHeight_;
+	std::shared_ptr<uint8_t[]> frameDataArray(new uint8_t[LOW_QUALITY_RESOLUTION * LOW_QUALITY_COLOR_DEPTH]);
+
+	uint32_t* pixelData = reinterpret_cast<uint32_t*>(data);
+
+	for(int pixelIndex = 0; pixelIndex < highQualityResolution; ++pixelIndex)
+	{
+		uint32_t pixel = pixelData[pixelIndex];
+
+		uint32_t grayscale = ((pixel >> 16) & 0xFF) + ((pixel >> 8) & 0xFF) + (pixel & 0xFF);
+		grayscale /= 3;
+
+		float interpolatedPixelIndex = (float)pixelIndex / highQualityResolution;
+		interpolatedPixelIndex *= (float)LOW_QUALITY_RESOLUTION;
+
+		frameDataArray.get()[(int)interpolatedPixelIndex] = grayscale & 0xFF;
+	}
+
+	munmap(data, length);
+	
+	return frameDataArray;
+
+}

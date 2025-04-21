@@ -8,7 +8,7 @@ public:
 	~ImageData(){}
 	int rowIndex{ 0 };
 	int sectionIndex{ 0 };
-	uint8_t row[1920];
+	uint8_t row[1280];
 };
 #pragma pack(pop)
 

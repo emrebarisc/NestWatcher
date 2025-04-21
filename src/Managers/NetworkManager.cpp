@@ -166,9 +166,10 @@ void NetworkManager::TransmitCameraImageAsync()
 	}
 
 
-	int cameraWidth = cameraManager->GetCameraWidth();
+	int cameraHeight = LOW_QUALITY_RESOLUTION_HEIGHT;
+	int cameraWidth = LOW_QUALITY_RESOLUTION_WIDTH;
 	int transmittedDataSize = sizeof(ImageData::rowIndex) + sizeof(ImageData::sectionIndex)  + cameraWidth;
-	int colorDepth = 3;
+	int colorDepth = LOW_QUALITY_COLOR_DEPTH;
 	
 	int sectionDataSize = cameraWidth;
 
@@ -189,9 +190,9 @@ void NetworkManager::TransmitCameraImageAsync()
 		//imageCommandMessage.command = ImageCommand::FrameTransmissionStarted;
 		//send(cameraImageCommandSenderSocket_, (char*)&imageCommandMessage, sizeof(imageCommandMessage), 0);
 
-		std::shared_ptr<uint8_t[]> currentFrame = cameraManager->GetFrameDataArray();
+		std::shared_ptr<uint8_t[]> currentFrame = cameraManager->GetFrameDataArrayLowQuality();
 
-		for(int rowIndex = 0; transmittingCameraImage_ && rowIndex < cameraManager->GetCameraHeight(); ++rowIndex)
+		for(int rowIndex = 0; transmittingCameraImage_ && rowIndex < cameraHeight; ++rowIndex)
 		{
 			imageData.rowIndex = rowIndex;
 
