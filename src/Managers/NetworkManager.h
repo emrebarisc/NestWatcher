@@ -30,6 +30,7 @@ class NetworkManager : public IManager
 	private:
 		void StartListeningCommandAddressAsync();
 		void TransmitCameraImageAsync();
+		void TransmitCameraImageLowQualityAsync();
 
 		static constexpr int COMMAND_PORT{ 1000 };
 		static constexpr int DATA_PORT{ 1001 };

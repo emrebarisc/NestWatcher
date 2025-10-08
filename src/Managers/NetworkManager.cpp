@@ -166,10 +166,87 @@ void NetworkManager::TransmitCameraImageAsync()
 	}
 
 
+	int cameraHeight = HIGH_QUALITY_RESOLUTION_HEIGHT;
+	int cameraWidth = HIGH_QUALITY_RESOLUTION_WIDTH;
+	int transmittedDataSize = sizeof(ImageData::rowIndex) + sizeof(ImageData::sectionIndex)  + cameraWidth;
+	int colorDepth = HIGH_QUALITY_COLOR_DEPTH_FOR_NETWORK;
+	int sectionCount = colorDepth;
+	
+	int sectionDataSize = cameraWidth;
+
+	ImageData imageData;
+
+	dataSocket_ = socket(AF_INET, SOCK_DGRAM, 0);
+	dataAddress_.sin_family = AF_INET;
+	dataAddress_.sin_port = htons(DATA_PORT);
+	dataAddress_.sin_addr.s_addr = clientIP_.s_addr;
+
+	std::cout << "Started sending camera image." << std::endl;
+
+	transmittingCameraImage_ = true;
+
+	while(transmittingCameraImage_)
+	{
+		//ImageCommandMessage imageCommandMessage;
+		//imageCommandMessage.command = ImageCommand::FrameTransmissionStarted;
+		//send(cameraImageCommandSenderSocket_, (char*)&imageCommandMessage, sizeof(imageCommandMessage), 0);
+
+		std::shared_ptr<uint8_t[]> currentFrame = cameraManager->GetFrameDataArray();
+
+		for(int rowIndex = 0; transmittingCameraImage_ && rowIndex < cameraHeight; ++rowIndex)
+		{
+			imageData.rowIndex = rowIndex;
+
+			for(int sectionIndex = 0; sectionIndex < sectionCount; ++sectionIndex)
+			{
+				imageData.sectionIndex = sectionIndex;
+				
+				uint8_t* currentFrameRaw = currentFrame.get();
+				
+				int pixelRowStart = rowIndex * cameraWidth * colorDepth;
+				std::memcpy(imageData.row, currentFrameRaw + pixelRowStart + sectionIndex * sectionDataSize, sectionDataSize);
+
+				sendto(dataSocket_, &imageData, transmittedDataSize, 0, (sockaddr*)&dataAddress_, sizeof(dataAddress_));
+			}
+
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
+		}
+	
+		//imageCommandMessage.command = ImageCommand::FrameTransmissionEnded;
+		//send(cameraImageCommandSenderSocket_, (char*)&imageCommandMessage, sizeof(imageCommandMessage), 0);
+
+		std::this_thread::sleep_for(std::chrono::milliseconds(33));
+	}
+}
+
+void NetworkManager::TransmitCameraImageLowQualityAsync()
+{	
+/*	cameraImageCommandSenderSocket_ = socket(AF_INET, SOCK_STREAM, 0);
+
+	cameraImageCommandSenderAddress_.sin_family = AF_INET;
+	cameraImageCommandSenderAddress_.sin_port = htons(COMMAND_PORT);
+	cameraImageCommandSenderAddress_.sin_addr.s_addr = clientIP_.s_addr;//inet_addr(SERVER_IP);
+	
+	int commandSocketBindResult = connect(cameraImageCommandSenderSocket_, (const sockaddr*)&cameraImageCommandSenderAddress_, sizeof(cameraImageCommandSenderAddress_)); 
+	if(commandSocketBindResult != 0)
+	{
+		std::cerr << "Failed to connect camera image command  socket with error: " << commandSocketBindResult  << std::endl;
+		close(cameraImageCommandSenderSocket_);
+		return;
+	}
+*/
+	CameraManager* cameraManager = Program::GetInstance()->GetCameraManager();
+	if(!cameraManager)
+	{
+		return;
+	}
+
+
 	int cameraHeight = LOW_QUALITY_RESOLUTION_HEIGHT;
 	int cameraWidth = LOW_QUALITY_RESOLUTION_WIDTH;
 	int transmittedDataSize = sizeof(ImageData::rowIndex) + sizeof(ImageData::sectionIndex)  + cameraWidth;
 	int colorDepth = LOW_QUALITY_COLOR_DEPTH;
+	int sectionCount = colorDepth;
 	
 	int sectionDataSize = cameraWidth;
 
@@ -196,7 +273,7 @@ void NetworkManager::TransmitCameraImageAsync()
 		{
 			imageData.rowIndex = rowIndex;
 
-			for(int sectionIndex = 0; sectionIndex < colorDepth; ++sectionIndex)
+			for(int sectionIndex = 0; sectionIndex < sectionCount; ++sectionIndex)
 			{
 				imageData.sectionIndex = sectionIndex;
 				
@@ -207,11 +284,13 @@ void NetworkManager::TransmitCameraImageAsync()
 
 				sendto(dataSocket_, &imageData, transmittedDataSize, 0, (sockaddr*)&dataAddress_, sizeof(dataAddress_));
 			}
+
+			std::this_thread::sleep_for(std::chrono::milliseconds(1));
 		}
 	
 		//imageCommandMessage.command = ImageCommand::FrameTransmissionEnded;
 		//send(cameraImageCommandSenderSocket_, (char*)&imageCommandMessage, sizeof(imageCommandMessage), 0);
 
-		std::this_thread::yield();
+		std::this_thread::sleep_for(std::chrono::milliseconds(33));
 	}
 }

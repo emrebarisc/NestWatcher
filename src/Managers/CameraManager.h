@@ -9,17 +9,21 @@
 
 class CameraMotionDetection;
 
-constexpr int LOW_QUALITY_RESOLUTION_WIDTH = 1280;
-constexpr int LOW_QUALITY_RESOLUTION_HEIGHT = 720;
-constexpr int LOW_QUALITY_COLOR_DEPTH = 1;
+constexpr int LOW_QUALITY_RESOLUTION_WIDTH = 640;
+constexpr int LOW_QUALITY_RESOLUTION_HEIGHT = 480;
+constexpr int LOW_QUALITY_COLOR_DEPTH = 3;
 constexpr int LOW_QUALITY_RESOLUTION = LOW_QUALITY_RESOLUTION_WIDTH * LOW_QUALITY_RESOLUTION_HEIGHT;
+
+constexpr int HIGH_QUALITY_RESOLUTION_WIDTH = 1920;
+constexpr int HIGH_QUALITY_RESOLUTION_HEIGHT = 1080;
+constexpr int HIGH_QUALITY_COLOR_DEPTH_FOR_NETWORK = 3;
+constexpr int HIGH_QUALITY_RESOLUTION = HIGH_QUALITY_RESOLUTION_WIDTH * HIGH_QUALITY_RESOLUTION_HEIGHT;
 
 enum class PixelFormat : uint8_t
 {
 	None = 0,
 
 	R8 = 10,
-
 
 	YUV420 = 30,
 	RGB565,
@@ -40,6 +44,7 @@ class CameraManager : public IManager
 
 		std::shared_ptr<uint8_t[]> GetFrameDataArray();
 		std::shared_ptr<uint8_t[]> GetFrameDataArrayLowQuality();
+		std::shared_ptr<uint8_t[]> GetFrameDataArrayLowQualityGrayscale();
 
 		int GetCameraWidth() const
 		{
@@ -68,12 +73,12 @@ class CameraManager : public IManager
 		libcamera::FrameBuffer* lastlyCapturedFrame_{ nullptr };
 		libcamera::FrameBufferAllocator* frameBufferAllocator_{ nullptr }; 
 		libcamera::Stream* libcameraCameraStream_{ nullptr };
-		std::vector<std::unique_ptr<libcamera::Request>> libcameraRequests_;
+		std::vector<std::unique_ptr<libcamera::Request>> libcameraRequests_{};
 
 		std::mutex lastlyCapturedFrameMutex_;
 
-		int cameraWidth_{ 1920 };
-		int cameraHeight_{ 1080 };
+		int cameraWidth_{ HIGH_QUALITY_RESOLUTION_WIDTH };
+		int cameraHeight_{ HIGH_QUALITY_RESOLUTION_HEIGHT };
 		int colorDepth_ { 4 };
 
 		PixelFormat pixelFormat_{ PixelFormat::XRGB8888 };

@@ -19,13 +19,13 @@
 
 #include "Core.h"
 
-bool fileExists(const std::string& path) 
+bool DoesFileExist(const std::string& path) 
 {
     std::ifstream file(path);
     return file.good();
 }
 
-std::string incrementFilename(const std::string& filename) 
+std::string IncrementFilename(const std::string& filename) 
 {
     std::size_t dotPos = filename.find_last_of('.');
     std::size_t dashPos = filename.find_last_of('-');
@@ -33,13 +33,18 @@ std::string incrementFilename(const std::string& filename)
     std::string namePart;
     std::string extPart = (dotPos != std::string::npos) ? filename.substr(dotPos) : "";
 
-    if (dotPos == std::string::npos) dotPos = filename.length();  // If no extension
+    if (dotPos == std::string::npos)
+    {
+	    dotPos = filename.length();
+    }
 
-    if (dashPos != std::string::npos && dashPos < dotPos) {
+    if (dashPos != std::string::npos && dashPos < dotPos)
+    {
         std::string numberPart = filename.substr(dashPos + 1, dotPos - dashPos - 1);
         bool isNumber = !numberPart.empty() && std::all_of(numberPart.begin(), numberPart.end(), ::isdigit);
 
-        if (isNumber) {
+        if (isNumber)
+	{
             int number = std::stoi(numberPart);
             number++;
 
@@ -48,7 +53,6 @@ std::string incrementFilename(const std::string& filename)
         }
     }
 
-    // If no valid "-number" part found
     namePart = filename.substr(0, dotPos);
     return namePart + "-1" + extPart;
 }
@@ -65,9 +69,9 @@ void IOManager::SaveFrameAsync(const std::string& fileName, int width, int heigh
 
 	std::string path = std::string(SAVE_PATH) + fileName;
 
-	if (fileExists(path))
+	if (DoesFileExist(path))
 	{
-		std::string newPath = incrementFilename(path);
+		std::string newPath = IncrementFilename(path);
 		std::rename(path.c_str(), newPath.c_str());
 	}
 

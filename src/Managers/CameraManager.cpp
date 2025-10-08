@@ -239,17 +239,60 @@ std::shared_ptr<uint8_t[]> CameraManager::GetFrameDataArrayLowQuality()
 
 	uint32_t* pixelData = reinterpret_cast<uint32_t*>(data);
 
-	for(int pixelIndex = 0; pixelIndex < highQualityResolution; ++pixelIndex)
+	int scaleFactor = highQualityResolution / LOW_QUALITY_RESOLUTION;
+	for (int i = 0; i < LOW_QUALITY_RESOLUTION; ++i)
 	{
-		uint32_t pixel = pixelData[pixelIndex];
+	    int srcIndex = i * scaleFactor;
+	    uint32_t pixel = pixelData[srcIndex];
+	    frameDataArray[i] = (pixel >> 16) & 0xFF;
+	    frameDataArray[i + 1] = (pixel >> 8) & 0xFF;
+	    frameDataArray[i + 2] = pixel & 0xFF;
+	}
 
-		uint32_t grayscale = ((pixel >> 16) & 0xFF) + ((pixel >> 8) & 0xFF) + (pixel & 0xFF);
-		grayscale /= 3;
+	munmap(data, length);
+	
+	return frameDataArray;
 
-		float interpolatedPixelIndex = (float)pixelIndex / highQualityResolution;
-		interpolatedPixelIndex *= (float)LOW_QUALITY_RESOLUTION;
+}
 
-		frameDataArray.get()[(int)interpolatedPixelIndex] = grayscale & 0xFF;
+std::shared_ptr<uint8_t[]> CameraManager::GetFrameDataArrayLowQualityGrayscale()
+{
+	std::lock_guard<std::mutex> frameLock(lastlyCapturedFrameMutex_);
+
+	if(!lastlyCapturedFrame_)
+	{
+		return nullptr;
+	}
+
+	if (lastlyCapturedFrame_->planes().empty())
+	{
+        	std::cerr << "No planes in buffer!" << std::endl;
+        	return nullptr;
+    	}
+
+    	int fd = lastlyCapturedFrame_->planes()[0].fd.get();
+    	size_t length = lastlyCapturedFrame_->planes()[0].length;
+    	void *data = mmap(nullptr, length, PROT_READ, MAP_SHARED, fd, 0);
+
+	if (data == MAP_FAILED)
+    	{
+        	std::cerr << "Failed to map buffer memory!" << std::endl;
+        	return nullptr;
+    	}
+	
+	int highQualityResolution = cameraWidth_ * cameraHeight_;
+	std::shared_ptr<uint8_t[]> frameDataArray(new uint8_t[LOW_QUALITY_RESOLUTION]);
+
+	uint32_t* pixelData = reinterpret_cast<uint32_t*>(data);
+
+	int scaleFactor = highQualityResolution / LOW_QUALITY_RESOLUTION;
+	for (int i = 0; i < LOW_QUALITY_RESOLUTION; ++i)
+	{
+	    int srcIndex = i * scaleFactor;
+	    uint32_t pixel = pixelData[srcIndex];
+	    uint32_t grayscale = ((pixel >> 16) & 0xFF) + ((pixel >> 8) & 0xFF) + (pixel & 0xFF);
+	    grayscale /= 3;
+	    frameDataArray[i] = grayscale;
 	}
 
 	munmap(data, length);
