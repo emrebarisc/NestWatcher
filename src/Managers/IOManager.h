@@ -22,7 +22,7 @@ class IOManager : public IManager
 
 		void Init() override {}
 
-		void SaveFrameToPNG(const std::shared_ptr<uint8_t[]>& frameData, const std::string &filename, int width, int height);
+		void SaveFrameJPG(const std::shared_ptr<uint8_t[]>& frameData, const std::string &filename, int width, int height);
 
 	protected:
 

@@ -49,4 +49,4 @@ std::string GetExecutableDirectory()
     }
 }
 
-#define SAVE_PATH GetExecutableDirectory()
+#define SAVE_PATH (std::string(GetExecutableDirectory()) + "/Photos/")

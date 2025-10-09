@@ -28,58 +28,63 @@ void CameraMotionDetection::Start()
 	motionDetectionThread_ = std::thread(&CameraMotionDetection::DetectMotion, this);
 }
 
-int GetGrayscaleDifference(uint8_t* frameOne, uint8_t* frameTwo)
+int GetGrayscaleDifference(const uint8_t* pixel1, const uint8_t* pixel2)
 {
-	return (abs(frameOne[0] - frameTwo[0]) + abs(frameOne[1] - frameTwo[1]) + abs(frameOne[2] - frameTwo[2])) / 3;
+    int diffR = std::abs(pixel1[0] - pixel2[0]);
+    int diffG = std::abs(pixel1[1] - pixel2[1]);
+    int diffB = std::abs(pixel1[2] - pixel2[2]);
+    return (diffR + diffG + diffB) / 3;
 }
 
 void CameraMotionDetection::DetectMotion()
 {
-	while(true)
-	{
-		previousFrameData_ = currentFrameData_;
-		currentFrameData_ = cameraManager_->GetFrameDataArray();
+    const int cameraWidth = cameraManager_->GetCameraWidth();
+    const int cameraHeight = cameraManager_->GetCameraHeight();
+    const int cameraResolution = cameraWidth * cameraHeight;
+    const int bytesPerPixel = 3;
+    const int rowStride = cameraWidth * bytesPerPixel;
 
-		if(!previousFrameData_ || !currentFrameData_)
-		{
-			std::this_thread::yield();
-			continue;
-		}
+    while (true)
+    {
+        previousFrameData_ = currentFrameData_;
+        currentFrameData_ = cameraManager_->GetFrameDataArray();
 
-		const int cameraWidth = cameraManager_->GetCameraWidth();
-		const int cameraHeight = cameraManager_->GetCameraHeight();
-		const int cameraResolution = cameraWidth * cameraHeight;
-		const int cameraWidthWithColorDepth = cameraWidth * 3;
+        if (!previousFrameData_ || !currentFrameData_)
+        {
+            std::this_thread::yield();
+            continue;
+        }
 
-		int totalChangedPixelCount = 0;
+        int totalChangedPixelCount = 0;
 
-		for(int y = 0; y < cameraHeight; ++y)
-		{
-			for(int x = 0; x < cameraWidthWithColorDepth; x += 3)
-			{
-				const int index = y * cameraWidthWithColorDepth + x;
+        for (int y = 0; y < cameraHeight; y += 2)
+        {
+            const int rowOffset = y * rowStride;
 
-				//frameDifference_[index] = abs(currentFrameData_.get()[index] - previousFrameData_.get()[index]);
-				//frameDifference_[index + 1] = abs(currentFrameData_.get()[index + 1] - previousFrameData_.get()[index + 1]);
-				//frameDifference_[index + 2] = abs(currentFrameData_.get()[index + 2] - previousFrameData_.get()[index + 2]);
-			
-				int grayscaleDifference = GetGrayscaleDifference(&currentFrameData_.get()[0], &previousFrameData_.get()[0]);
+            for (int x = 0; x < rowStride; x += bytesPerPixel * 2)
+            {
+                const int index = rowOffset + x;
 
-				if(PIXEL_CHANGE_THRESHOLD < grayscaleDifference)
-				{
+                int grayscaleDiff = GetGrayscaleDifference(
+                    &currentFrameData_.get()[index],
+                    &previousFrameData_.get()[index]);
+
+                if (PIXEL_CHANGE_THRESHOLD < grayscaleDiff)
+                {
 					++totalChangedPixelCount;
 				}
-			}	
-		}
+			}
+        }
 
-		if((MOTION_DETECTION_PERCENTAGE * cameraResolution) < totalChangedPixelCount)
-		{
-			CommandMessage commandMessage;
-			commandMessage.command = Command::TakeAPhotograph;
+        totalChangedPixelCount *= 4;
 
-			inputManager_->ExecuteCommand(commandMessage);
-		}
+        if (MOTION_DETECTION_PERCENTAGE * cameraResolution < totalChangedPixelCount)
+        {
+            CommandMessage commandMessage;
+            commandMessage.command = Command::TakeAPhotograph;
+            inputManager_->ExecuteCommand(commandMessage);
+        }
 
-		std::this_thread::sleep_for(std::chrono::milliseconds(250));
-	}
+        std::this_thread::sleep_for(std::chrono::milliseconds(125));
+    }
 }

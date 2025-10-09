@@ -17,8 +17,8 @@ public:
 protected:
 
 private:
-	static constexpr float MOTION_DETECTION_PERCENTAGE = 0.05f;
-	static constexpr int PIXEL_CHANGE_THRESHOLD = 50;
+	static constexpr float MOTION_DETECTION_PERCENTAGE = 0.03f;
+	static constexpr int PIXEL_CHANGE_THRESHOLD = 30;
 
 	void DetectMotion();
 

@@ -43,8 +43,8 @@ std::string IncrementFilename(const std::string& filename)
         std::string numberPart = filename.substr(dashPos + 1, dotPos - dashPos - 1);
         bool isNumber = !numberPart.empty() && std::all_of(numberPart.begin(), numberPart.end(), ::isdigit);
 
-        if (isNumber)
-	{
+		if (isNumber)
+		{
             int number = std::stoi(numberPart);
             number++;
 
@@ -67,7 +67,7 @@ void IOManager::SaveFrameAsync(const std::string& fileName, int width, int heigh
 {
 	saveFrameMutex_.lock();
 
-	std::string path = std::string(SAVE_PATH) + fileName;
+	std::string path = SAVE_PATH + fileName;
 
 	if (DoesFileExist(path))
 	{
@@ -78,36 +78,27 @@ void IOManager::SaveFrameAsync(const std::string& fileName, int width, int heigh
 	auto now = std::chrono::system_clock::now();
 	auto msBefore = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 
-    	if (!stbi_write_jpg(path.c_str(), width, height, 3, data.get(), 100))
+    if (!stbi_write_jpg(path.c_str(), width, height, 3, data.get(), 100))
 	{
-        	std::cerr << "Failed to save image!" << std::endl;
-    	}
-	else
-	{
-		now = std::chrono::system_clock::now();
-		auto msAfter = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
-        	//std::cout << "Saved frame to " << path << " in " << (msAfter - msBefore) * 0.001f << " seconds."<< std::endl;
-    	}
+        std::cerr << "Failed to save image!" << std::endl;
+    }
+	// else
+	// {
+	// 	  now = std::chrono::system_clock::now();
+	// 	  auto msAfter = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
+    //    std::cout << "Saved frame to " << path << " in " << (msAfter - msBefore) * 0.001f << " seconds."<< std::endl;
+    // }
 
 	saveFrameMutex_.unlock();
 }
 
-void IOManager::SaveFrameToPNG(const std::shared_ptr<uint8_t[]>& frameData, const std::string &fileName, int width, int height)
+void IOManager::SaveFrameJPG(const std::shared_ptr<uint8_t[]>& frameData, const std::string &fileName, int width, int height)
 {
 	if(frameData == nullptr)
 	{
 		return;
 	}
-
-	/*(saveFrameThread_ && saveFrameThread_->joinable())
-	{
-		saveFrameThread_->join();
-		delete saveFrameThread_;
-		saveFrameThread_ = nullptr;
-	}
-
-	saveFrameThread_ = new std::thread(&IOManager::SaveFrameAsync, this, fileName, width, height, frameData);
-	*/
+	
 	std::make_shared<std::thread*>(new std::thread(&IOManager::SaveFrameAsync, this, fileName, width, height, frameData));
 }
 
