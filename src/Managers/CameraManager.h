@@ -9,8 +9,8 @@
 
 class CameraMotionDetection;
 
-constexpr int LOW_QUALITY_RESOLUTION_WIDTH = 640;
-constexpr int LOW_QUALITY_RESOLUTION_HEIGHT = 480;
+constexpr int LOW_QUALITY_RESOLUTION_WIDTH = 320;
+constexpr int LOW_QUALITY_RESOLUTION_HEIGHT = 240;
 constexpr int LOW_QUALITY_COLOR_DEPTH = 3;
 constexpr int LOW_QUALITY_RESOLUTION = LOW_QUALITY_RESOLUTION_WIDTH * LOW_QUALITY_RESOLUTION_HEIGHT;
 
@@ -46,6 +46,9 @@ class CameraManager : public IManager
 		std::shared_ptr<uint8_t[]> GetFrameDataArrayLowQuality();
 		std::shared_ptr<uint8_t[]> GetFrameDataArrayLowQualityGrayscale();
 
+		void SetupLowQualityCamera();
+		void SetupHighQualityCamera();
+
 		int GetCameraWidth() const
 		{
 			return cameraWidth_;
@@ -66,6 +69,8 @@ class CameraManager : public IManager
 	private:
 		void RequestComplete(libcamera::Request* request);
 
+		void SetupCamera();
+
 		CameraMotionDetection* cameraMotionDetection_{ nullptr };
 
 		std::shared_ptr<libcamera::Camera> libcameraCamera_{ nullptr };
@@ -77,10 +82,12 @@ class CameraManager : public IManager
 
 		std::mutex lastlyCapturedFrameMutex_;
 
-		int cameraWidth_{ HIGH_QUALITY_RESOLUTION_WIDTH };
-		int cameraHeight_{ HIGH_QUALITY_RESOLUTION_HEIGHT };
-		int colorDepth_ { 4 };
+		unsigned int cameraWidth_{ HIGH_QUALITY_RESOLUTION_WIDTH };
+		unsigned int cameraHeight_{ HIGH_QUALITY_RESOLUTION_HEIGHT };
+		unsigned int colorDepth_ { 4 };
 
 		PixelFormat pixelFormat_{ PixelFormat::XRGB8888 };
 		libcamera::PixelFormat libcameraPixelFormat_{ libcamera::formats::XRGB8888 };
+
+		uint8_t isCameraRunning_ : 1;
 };

@@ -84,7 +84,9 @@ void InputManager::ExecuteCommand(const CommandMessage& commandMessage)
 					cameraManager->GetFrameDataArray(),
 					fileName,
 					cameraManager->GetCameraWidth(),
-					cameraManager->GetCameraHeight());
+					cameraManager->GetCameraHeight(),
+					cameraManager->GetColorDepth());
+
 			break;
 		}
 		case Command::StartStream:

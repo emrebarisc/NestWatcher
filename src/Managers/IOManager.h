@@ -22,12 +22,12 @@ class IOManager : public IManager
 
 		void Init() override {}
 
-		void SaveFrameJPG(const std::shared_ptr<uint8_t[]>& frameData, const std::string &filename, int width, int height);
+		void SaveFrameJPG(const std::shared_ptr<uint8_t[]>& frameData, const std::string &filename, int width, int height, int channel);
 
 	protected:
 
 	private:
-		void SaveFrameAsync(const std::string& fileName, int width, int height, const std::shared_ptr<uint8_t[]>&  data);
+		void SaveFrameAsync(const std::string& fileName, int width, int height, int channel, const std::shared_ptr<uint8_t[]>&  data);
 		
 		std::thread* saveFrameThread_{ nullptr };
 		std::mutex saveFrameMutex_;

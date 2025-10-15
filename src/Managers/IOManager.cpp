@@ -63,7 +63,7 @@ IOManager::~IOManager()
 	delete saveFrameThread_;
 }
 
-void IOManager::SaveFrameAsync(const std::string& fileName, int width, int height, const std::shared_ptr<uint8_t[]>& data)
+void IOManager::SaveFrameAsync(const std::string& fileName, int width, int height, int channel, const std::shared_ptr<uint8_t[]>& data)
 {
 	saveFrameMutex_.lock();
 
@@ -78,7 +78,7 @@ void IOManager::SaveFrameAsync(const std::string& fileName, int width, int heigh
 	auto now = std::chrono::system_clock::now();
 	auto msBefore = std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count();
 
-    if (!stbi_write_jpg(path.c_str(), width, height, 3, data.get(), 100))
+    if (!stbi_write_jpg(path.c_str(), width, height, channel, data.get(), 100))
 	{
         std::cerr << "Failed to save image!" << std::endl;
     }
@@ -92,14 +92,14 @@ void IOManager::SaveFrameAsync(const std::string& fileName, int width, int heigh
 	saveFrameMutex_.unlock();
 }
 
-void IOManager::SaveFrameJPG(const std::shared_ptr<uint8_t[]>& frameData, const std::string &fileName, int width, int height)
+void IOManager::SaveFrameJPG(const std::shared_ptr<uint8_t[]>& frameData, const std::string &fileName, int width, int height, int channel)
 {
 	if(frameData == nullptr)
 	{
 		return;
 	}
 	
-	std::make_shared<std::thread*>(new std::thread(&IOManager::SaveFrameAsync, this, fileName, width, height, frameData));
+	std::make_shared<std::thread*>(new std::thread(&IOManager::SaveFrameAsync, this, fileName, width, height, channel, frameData));
 }
 
 

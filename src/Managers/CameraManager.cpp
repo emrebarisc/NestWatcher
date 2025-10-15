@@ -18,6 +18,7 @@ static std::shared_ptr<libcamera::Camera> libcameraCamera_;
 
 CameraManager::CameraManager()
 {
+	isCameraRunning_ = false;
 	colorDepth_ = (int)pixelFormat_ % 10;
 
 	switch(pixelFormat_)
@@ -96,37 +97,7 @@ void CameraManager::Init()
 	libcameraCamera_ = libcameraCameraManager_->get(cameraId);
 	libcameraCamera_->acquire();
 
-	std::unique_ptr<libcamera::CameraConfiguration> cameraConfig = libcameraCamera_->generateConfiguration({ libcamera::StreamRole::Viewfinder });
-
-	libcamera::StreamConfiguration& streamConfig = cameraConfig->at(0);
-	std::cout << "Default viewfinder configuration is: " + streamConfig.toString() << std::endl;
-
-	streamConfig.size.width = cameraWidth_;
-	streamConfig.size.height = cameraHeight_;
-	streamConfig.pixelFormat = libcameraPixelFormat_;
-
-	cameraConfig->validate();
-
-	std::cout << "Validated viewfinder configuration is: " + streamConfig.toString() << std::endl;
-
-	libcameraCamera_->configure(cameraConfig.get());
-	
-	frameBufferAllocator_ = new libcamera::FrameBufferAllocator(libcameraCamera_);
-
-	for(libcamera::StreamConfiguration& streamConfiguration : *cameraConfig)
-	{
-		int ret = frameBufferAllocator_->allocate(streamConfiguration.stream());
-		if(ret < 0)
-		{
-			std::cerr << "Can't allocate buffers" << std::endl;
-			return;
-		}
-
-		size_t allocatedSize = frameBufferAllocator_->buffers(streamConfiguration.stream()).size();
-		std::cout << "Allocated " << allocatedSize << " buffers for stream" << std::endl;
-	}
-
-	libcameraCameraStream_ = streamConfig.stream();
+	SetupHighQualityCamera();
 }
 
 void CameraManager::Start()
@@ -166,6 +137,61 @@ void CameraManager::Start()
 	cameraMotionDetection_->Start();
 }
 
+void CameraManager::SetupLowQualityCamera()
+{
+	cameraWidth_ = LOW_QUALITY_RESOLUTION_WIDTH;
+	cameraHeight_ = LOW_QUALITY_RESOLUTION_HEIGHT;
+	colorDepth_ = 3;
+	libcameraPixelFormat_ = libcamera::formats::R8;
+
+	SetupCamera();
+}
+
+void CameraManager::SetupHighQualityCamera()
+{
+	cameraWidth_ = HIGH_QUALITY_RESOLUTION_WIDTH;
+	cameraHeight_ = HIGH_QUALITY_RESOLUTION_HEIGHT;
+	colorDepth_ = 1;
+	libcameraPixelFormat_ = libcamera::formats::XRGB8888;
+
+	SetupCamera();
+}
+
+void CameraManager::SetupCamera()
+{
+	std::unique_ptr<libcamera::CameraConfiguration> cameraConfig = libcameraCamera_->generateConfiguration({ libcamera::StreamRole::Viewfinder });
+
+	libcamera::StreamConfiguration& streamConfig = cameraConfig->at(0);
+	std::cout << "Default viewfinder configuration is: " + streamConfig.toString() << std::endl;
+
+	streamConfig.size.width = cameraWidth_;
+	streamConfig.size.height = cameraHeight_;
+	streamConfig.pixelFormat = libcameraPixelFormat_;
+
+	cameraConfig->validate();
+
+	std::cout << "Validated viewfinder configuration is: " + streamConfig.toString() << std::endl;
+
+	libcameraCamera_->configure(cameraConfig.get());
+
+	frameBufferAllocator_ = new libcamera::FrameBufferAllocator(libcameraCamera_);
+
+	for(libcamera::StreamConfiguration& streamConfiguration : *cameraConfig)
+	{
+	        int ret = frameBufferAllocator_->allocate(streamConfiguration.stream());
+	        if(ret < 0)
+	        {
+	                std::cerr << "Can't allocate buffers" << std::endl;
+	                return;
+	        }
+
+			size_t allocatedSize = frameBufferAllocator_->buffers(streamConfiguration.stream()).size();
+	        std::cout << "Allocated " << allocatedSize << " buffers for stream" << std::endl;
+	}
+
+	libcameraCameraStream_ = streamConfig.stream();
+}
+
 std::shared_ptr<uint8_t[]> CameraManager::GetFrameDataArray()
 {
 	std::lock_guard<std::mutex> frameLock(lastlyCapturedFrameMutex_);
@@ -177,13 +203,13 @@ std::shared_ptr<uint8_t[]> CameraManager::GetFrameDataArray()
 
 	if (lastlyCapturedFrame_->planes().empty())
 	{
-        	std::cerr << "No planes in buffer!" << std::endl;
-        	return nullptr;
-    	}
+		std::cerr << "No planes in buffer!" << std::endl;
+		return nullptr;
+	}
 
-    	int fd = lastlyCapturedFrame_->planes()[0].fd.get();
-    	size_t length = lastlyCapturedFrame_->planes()[0].length;
-    	void *data = mmap(nullptr, length, PROT_READ, MAP_SHARED, fd, 0);
+	int fd = lastlyCapturedFrame_->planes()[0].fd.get();
+	size_t length = lastlyCapturedFrame_->planes()[0].length;
+	void *data = mmap(nullptr, length, PROT_READ, MAP_SHARED, fd, 0);
 
 	if (data == MAP_FAILED)
     	{
@@ -234,12 +260,12 @@ std::shared_ptr<uint8_t[]> CameraManager::GetFrameDataArrayLowQuality()
         	return nullptr;
     	}
 	
-	int highQualityResolution = cameraWidth_ * cameraHeight_;
+	int resolution = cameraWidth_ * cameraHeight_;
 	std::shared_ptr<uint8_t[]> frameDataArray(new uint8_t[LOW_QUALITY_RESOLUTION * LOW_QUALITY_COLOR_DEPTH]);
 
 	uint32_t* pixelData = reinterpret_cast<uint32_t*>(data);
 
-	int scaleFactor = highQualityResolution / LOW_QUALITY_RESOLUTION;
+	int scaleFactor = resolution / LOW_QUALITY_RESOLUTION;
 	for (int i = 0; i < LOW_QUALITY_RESOLUTION; ++i)
 	{
 	    int srcIndex = i * scaleFactor;
