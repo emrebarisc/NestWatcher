@@ -35,7 +35,7 @@ private:
 
     std::vector<uint8_t> grayPrev_;
     std::vector<uint8_t> grayCurr_;
-    std::vector<uint8_t> blurBuffer_; // temporary buffer for Gaussian blur
+    std::vector<uint8_t> blurBuffer_;
 
     std::thread motionDetectionThread_;
 };

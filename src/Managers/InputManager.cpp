@@ -85,7 +85,7 @@ void InputManager::ExecuteCommand(const CommandMessage& commandMessage)
 					fileName,
 					cameraManager->GetCameraWidth(),
 					cameraManager->GetCameraHeight(),
-					cameraManager->GetColorDepth());
+					3);
 
 			break;
 		}
