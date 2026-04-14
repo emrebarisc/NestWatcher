@@ -30,12 +30,12 @@ private:
     CameraManager* cameraManager_{ nullptr };
     InputManager* inputManager_{ nullptr };
 
-    std::shared_ptr<uint8_t[]> previousFrameData_{ nullptr };
     std::shared_ptr<uint8_t[]> currentFrameData_{ nullptr };
 
-    std::vector<uint8_t> grayPrev_;
     std::vector<uint8_t> grayCurr_;
     std::vector<uint8_t> blurBuffer_;
+    std::vector<uint8_t> blurredPrev_;
+    std::vector<float> blurTemp_;
 
     std::thread motionDetectionThread_;
 };
