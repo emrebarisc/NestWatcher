@@ -2,9 +2,11 @@
 
 #include <arpa/inet.h>
 
+#include <algorithm>
 #include <cstring>
 #include <iostream>
 #include <thread>
+#include <vector>
 
 #include "Program.h"
 #include "Managers/CameraManager.h"
@@ -13,6 +15,15 @@
 #include "Network/Command.h"
 #include "Network/ImageCommand.h"
 #include "Network/ImageData.h"
+
+#include "IO/stb_image_write.h"
+
+static void StbiWriteToVectorCallback(void *context, void *data, int size) 
+{
+    auto *vec = static_cast<std::vector<uint8_t>*>(context);
+    const uint8_t *bytes = static_cast<const uint8_t *>(data);
+    vec->insert(vec->end(), bytes, bytes + size);
+}
 
 NetworkManager::NetworkManager()
 {
@@ -144,152 +155,112 @@ void NetworkManager::StartListeningCommandAddressAsync()
 }
 
 void NetworkManager::TransmitCameraImageAsync()
-{	
-/*	cameraImageCommandSenderSocket_ = socket(AF_INET, SOCK_STREAM, 0);
+{   
+    CameraManager* cameraManager = Program::GetInstance()->GetCameraManager();
+    if(!cameraManager) return;
 
-	cameraImageCommandSenderAddress_.sin_family = AF_INET;
-	cameraImageCommandSenderAddress_.sin_port = htons(COMMAND_PORT);
-	cameraImageCommandSenderAddress_.sin_addr.s_addr = clientIP_.s_addr;//inet_addr(SERVER_IP);
-	
-	int commandSocketBindResult = connect(cameraImageCommandSenderSocket_, (const sockaddr*)&cameraImageCommandSenderAddress_, sizeof(cameraImageCommandSenderAddress_)); 
-	if(commandSocketBindResult != 0)
-	{
-		std::cerr << "Failed to connect camera image command  socket with error: " << commandSocketBindResult  << std::endl;
-		close(cameraImageCommandSenderSocket_);
-		return;
-	}
-*/
-	CameraManager* cameraManager = Program::GetInstance()->GetCameraManager();
-	if(!cameraManager)
-	{
-		return;
-	}
+    dataSocket_ = socket(AF_INET, SOCK_DGRAM, 0);
+    dataAddress_.sin_family = AF_INET;
+    dataAddress_.sin_port = htons(DATA_PORT);
+    dataAddress_.sin_addr.s_addr = clientIP_.s_addr;
 
+    std::cout << "Started sending camera image." << std::endl;
+    transmittingCameraImage_ = true;
 
-	int cameraHeight = HIGH_QUALITY_RESOLUTION_HEIGHT;
-	int cameraWidth = HIGH_QUALITY_RESOLUTION_WIDTH;
-	int transmittedDataSize = sizeof(ImageData::rowIndex) + sizeof(ImageData::sectionIndex)  + cameraWidth;
-	int colorDepth = HIGH_QUALITY_COLOR_DEPTH_FOR_NETWORK;
-	int sectionCount = colorDepth;
-	
-	int sectionDataSize = cameraWidth;
+    uint32_t currentFrameId = 0;
 
-	ImageData imageData;
+    while(transmittingCameraImage_)
+    {
+        std::shared_ptr<uint8_t[]> currentFrame = cameraManager->GetFrameDataArray();
+        if(!currentFrame)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            continue;
+        }
 
-	dataSocket_ = socket(AF_INET, SOCK_DGRAM, 0);
-	dataAddress_.sin_family = AF_INET;
-	dataAddress_.sin_port = htons(DATA_PORT);
-	dataAddress_.sin_addr.s_addr = clientIP_.s_addr;
+        std::vector<uint8_t> jpegBuffer;
+        jpegBuffer.reserve(250000);
+        
+        int cameraWidth = cameraManager->GetCameraWidth();
+        int cameraHeight = cameraManager->GetCameraHeight();
+        int colorDepth = 3;//cameraManager->GetColorDepth();
 
-	std::cout << "Started sending camera image." << std::endl;
+        stbi_write_jpg_to_func(StbiWriteToVectorCallback, &jpegBuffer, cameraWidth, cameraHeight, colorDepth, currentFrame.get(), 60);
 
-	transmittingCameraImage_ = true;
+        int totalChunks = (jpegBuffer.size() + 1023) / 1024;
+        ImageData chunk;
+        chunk.frameId = ++currentFrameId;
+        chunk.totalChunks = totalChunks;
 
-	while(transmittingCameraImage_)
-	{
-		//ImageCommandMessage imageCommandMessage;
-		//imageCommandMessage.command = ImageCommand::FrameTransmissionStarted;
-		//send(cameraImageCommandSenderSocket_, (char*)&imageCommandMessage, sizeof(imageCommandMessage), 0);
+        for (int i = 0; i < totalChunks && transmittingCameraImage_; ++i)
+        {
+            chunk.chunkIndex = i;
+            chunk.dataSize = std::min(static_cast<int>(jpegBuffer.size()) - (i * 1024), 1024);
+            std::memcpy(chunk.data, jpegBuffer.data() + (i * 1024), chunk.dataSize);
 
-		std::shared_ptr<uint8_t[]> currentFrame = cameraManager->GetFrameDataArray();
+            int transmittedDataSize = sizeof(chunk.frameId) + sizeof(chunk.chunkIndex) + sizeof(chunk.totalChunks) + sizeof(chunk.dataSize) + chunk.dataSize;
+            sendto(dataSocket_, &chunk, transmittedDataSize, 0, (sockaddr*)&dataAddress_, sizeof(dataAddress_));
+            
+            std::this_thread::sleep_for(std::chrono::microseconds(100));
+        }
 
-		for(int rowIndex = 0; transmittingCameraImage_ && rowIndex < cameraHeight; ++rowIndex)
-		{
-			imageData.rowIndex = rowIndex;
-
-			for(int sectionIndex = 0; sectionIndex < sectionCount; ++sectionIndex)
-			{
-				imageData.sectionIndex = sectionIndex;
-				
-				uint8_t* currentFrameRaw = currentFrame.get();
-				
-				int pixelRowStart = rowIndex * cameraWidth * colorDepth;
-				std::memcpy(imageData.row, currentFrameRaw + pixelRowStart + sectionIndex * sectionDataSize, sectionDataSize);
-
-				sendto(dataSocket_, &imageData, transmittedDataSize, 0, (sockaddr*)&dataAddress_, sizeof(dataAddress_));
-			}
-
-			std::this_thread::sleep_for(std::chrono::milliseconds(1));
-		}
-	
-		//imageCommandMessage.command = ImageCommand::FrameTransmissionEnded;
-		//send(cameraImageCommandSenderSocket_, (char*)&imageCommandMessage, sizeof(imageCommandMessage), 0);
-
-		std::this_thread::sleep_for(std::chrono::milliseconds(33));
-	}
+        std::this_thread::sleep_for(std::chrono::milliseconds(33)); 
+    }
 }
 
 void NetworkManager::TransmitCameraImageLowQualityAsync()
 {	
-/*	cameraImageCommandSenderSocket_ = socket(AF_INET, SOCK_STREAM, 0);
-
-	cameraImageCommandSenderAddress_.sin_family = AF_INET;
-	cameraImageCommandSenderAddress_.sin_port = htons(COMMAND_PORT);
-	cameraImageCommandSenderAddress_.sin_addr.s_addr = clientIP_.s_addr;//inet_addr(SERVER_IP);
-	
-	int commandSocketBindResult = connect(cameraImageCommandSenderSocket_, (const sockaddr*)&cameraImageCommandSenderAddress_, sizeof(cameraImageCommandSenderAddress_)); 
-	if(commandSocketBindResult != 0)
-	{
-		std::cerr << "Failed to connect camera image command  socket with error: " << commandSocketBindResult  << std::endl;
-		close(cameraImageCommandSenderSocket_);
-		return;
-	}
-*/
 	CameraManager* cameraManager = Program::GetInstance()->GetCameraManager();
 	if(!cameraManager)
 	{
 		return;
 	}
 
-
-	int cameraHeight = LOW_QUALITY_RESOLUTION_HEIGHT;
-	int cameraWidth = LOW_QUALITY_RESOLUTION_WIDTH;
-	int transmittedDataSize = sizeof(ImageData::rowIndex) + sizeof(ImageData::sectionIndex)  + cameraWidth;
-	int colorDepth = LOW_QUALITY_COLOR_DEPTH;
-	int sectionCount = colorDepth;
-	
-	int sectionDataSize = cameraWidth;
-
-	ImageData imageData;
-
 	dataSocket_ = socket(AF_INET, SOCK_DGRAM, 0);
 	dataAddress_.sin_family = AF_INET;
 	dataAddress_.sin_port = htons(DATA_PORT);
 	dataAddress_.sin_addr.s_addr = clientIP_.s_addr;
 
-	std::cout << "Started sending camera image." << std::endl;
+	std::cout << "Started sending low-quality camera image." << std::endl;
 
 	transmittingCameraImage_ = true;
+	uint32_t currentFrameId = 0;
 
 	while(transmittingCameraImage_)
 	{
-		//ImageCommandMessage imageCommandMessage;
-		//imageCommandMessage.command = ImageCommand::FrameTransmissionStarted;
-		//send(cameraImageCommandSenderSocket_, (char*)&imageCommandMessage, sizeof(imageCommandMessage), 0);
+		std::shared_ptr<uint8_t[]> currentFrame = cameraManager->GetFrameDataArray();
 
-		std::shared_ptr<uint8_t[]> currentFrame = cameraManager->GetFrameDataArrayLowQuality();
+        if(!currentFrame)
+        {
+            std::this_thread::sleep_for(std::chrono::milliseconds(10));
+            continue;
+        }
 
-		for(int rowIndex = 0; transmittingCameraImage_ && rowIndex < cameraHeight; ++rowIndex)
-		{
-			imageData.rowIndex = rowIndex;
+        std::vector<uint8_t> jpegBuffer;
+        jpegBuffer.reserve(50000);
+        
+        int cameraWidth = LOW_QUALITY_RESOLUTION_WIDTH;
+        int cameraHeight = LOW_QUALITY_RESOLUTION_HEIGHT;
+        int colorDepth = LOW_QUALITY_COLOR_DEPTH;
 
-			for(int sectionIndex = 0; sectionIndex < sectionCount; ++sectionIndex)
-			{
-				imageData.sectionIndex = sectionIndex;
-				
-				uint8_t* currentFrameRaw = currentFrame.get();
-				
-				int pixelRowStart = rowIndex * cameraWidth * colorDepth;
-				std::memcpy(imageData.row, currentFrameRaw + pixelRowStart + sectionIndex * sectionDataSize, sectionDataSize);
+        stbi_write_jpg_to_func(StbiWriteToVectorCallback, &jpegBuffer, cameraWidth, cameraHeight, colorDepth, currentFrame.get(), 60);
 
-				sendto(dataSocket_, &imageData, transmittedDataSize, 0, (sockaddr*)&dataAddress_, sizeof(dataAddress_));
-			}
+        int totalChunks = (jpegBuffer.size() + 1023) / 1024;
+        ImageData chunk;
+        chunk.frameId = ++currentFrameId;
+        chunk.totalChunks = totalChunks;
 
-			std::this_thread::sleep_for(std::chrono::milliseconds(1));
-		}
-	
-		//imageCommandMessage.command = ImageCommand::FrameTransmissionEnded;
-		//send(cameraImageCommandSenderSocket_, (char*)&imageCommandMessage, sizeof(imageCommandMessage), 0);
+        for (int i = 0; i < totalChunks && transmittingCameraImage_; ++i)
+        {
+            chunk.chunkIndex = i;
+            chunk.dataSize = std::min(static_cast<int>(jpegBuffer.size()) - (i * 1024), 1024);
+            std::memcpy(chunk.data, jpegBuffer.data() + (i * 1024), chunk.dataSize);
+
+            int transmittedDataSize = sizeof(chunk.frameId) + sizeof(chunk.chunkIndex) + sizeof(chunk.totalChunks) + sizeof(chunk.dataSize) + chunk.dataSize;
+            sendto(dataSocket_, &chunk, transmittedDataSize, 0, (sockaddr*)&dataAddress_, sizeof(dataAddress_));
+            
+            std::this_thread::sleep_for(std::chrono::microseconds(100));
+        }
 
 		std::this_thread::sleep_for(std::chrono::milliseconds(33));
 	}

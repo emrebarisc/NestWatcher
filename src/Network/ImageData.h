@@ -1,16 +1,15 @@
 #pragma once
 
-#include "Managers/CameraManager.h"
+#include <cstdint>
 
 #pragma pack(push, 1)
-class alignas(sizeof(uint8_t*)) ImageData
+class ImageData
 {
 public:
-	ImageData(){}
-	~ImageData(){}
-	int rowIndex{ 0 };
-	int sectionIndex{ 0 };
-	uint8_t row[HIGH_QUALITY_RESOLUTION_WIDTH];
+    uint32_t frameId{ 0 };
+    uint16_t chunkIndex{ 0 };
+    uint16_t totalChunks{ 0 };
+    uint16_t dataSize{ 0 };
+    uint8_t data[1024]; 
 };
 #pragma pack(pop)
-
