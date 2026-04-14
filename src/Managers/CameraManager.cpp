@@ -2,6 +2,7 @@
 
 #include <chrono>
 #include <thread>
+#include <cstring>
 
 #include <sys/mman.h>
 
@@ -152,7 +153,8 @@ void CameraManager::SetupHighQualityCamera()
 	cameraWidth_ = HIGH_QUALITY_RESOLUTION_WIDTH;
 	cameraHeight_ = HIGH_QUALITY_RESOLUTION_HEIGHT;
 	colorDepth_ = 1;
-	libcameraPixelFormat_ = libcamera::formats::XRGB8888;
+	
+	libcameraPixelFormat_ = libcamera::formats::XRGB8888; 
 
 	SetupCamera();
 }
@@ -331,4 +333,38 @@ std::shared_ptr<uint8_t[]> CameraManager::GetFrameDataArrayLowQualityGrayscale()
 
     munmap(data, length);
     return frameDataArray;
+}
+
+std::shared_ptr<std::vector<uint8_t>> CameraManager::GetCompressedFrameData()
+{
+	std::lock_guard<std::mutex> frameLock(lastlyCapturedFrameMutex_);
+
+	if(!lastlyCapturedFrame_ || lastlyCapturedFrame_->planes().empty())
+	{
+		return nullptr;
+	}
+
+	int fd = lastlyCapturedFrame_->planes()[0].fd.get();
+	size_t maxLength = lastlyCapturedFrame_->planes()[0].length;
+	
+    // CRITICAL: For MJPEG, we must read the actual compressed size from metadata
+	size_t actualSize = lastlyCapturedFrame_->metadata().planes()[0].bytesused;
+	
+	if (actualSize == 0) return nullptr;
+
+	void *data = mmap(nullptr, maxLength, PROT_READ, MAP_SHARED, fd, 0);
+
+	if (data == MAP_FAILED)
+	{
+		std::cerr << "Failed to map buffer memory!" << std::endl;
+		return nullptr;
+	}
+	
+    // Create a vector exactly the size of the JPEG payload and copy the data
+	auto frameData = std::make_shared<std::vector<uint8_t>>(actualSize);
+	std::memcpy(frameData->data(), data, actualSize);
+
+	munmap(data, maxLength);
+	
+	return frameData;
 }

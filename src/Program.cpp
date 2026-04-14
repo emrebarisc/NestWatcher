@@ -35,7 +35,7 @@ void Program::Init()
 	cameraManager_->Init();
 	inputManager_->Init();
 	ioManager_->Init();
-	networkManager_->Init();
+	networkManager_->Init(NetworkMode::LocalNetwork);
 }
 
 void Program::Start()

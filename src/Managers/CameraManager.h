@@ -45,6 +45,7 @@ class CameraManager : public IManager
 		std::shared_ptr<uint8_t[]> GetFrameDataArray();
 		std::shared_ptr<uint8_t[]> GetFrameDataArrayLowQuality();
 		std::shared_ptr<uint8_t[]> GetFrameDataArrayLowQualityGrayscale();
+		std::shared_ptr<std::vector<uint8_t>> GetCompressedFrameData();
 
 		void SetupLowQualityCamera();
 		void SetupHighQualityCamera();

@@ -51,13 +51,32 @@ NetworkManager::~NetworkManager()
 	delete imageTransmitterThread_;
 }
 
-void NetworkManager::Init()
+void NetworkManager::Init(NetworkMode mode)
 {
+    if (mode == NetworkMode::AccessPoint)
+    {
+        std::cout << "Initializing Access Point Mode..." << std::endl;
+        int result = system("nmcli dev wifi hotspot ifname wlan0 ssid NestWatcherAP password nestwatcher123");
+        if (result != 0)
+		{
+            std::cerr << "Failed to start Access Point. Make sure NetworkManager is installed and managing wlan0." << std::endl;
+        }
+		else
+		{
+            std::cout << "Access Point started. Server IP is 10.42.0.1" << std::endl;
+        }
+    }
+    else
+    {
+        std::cout << "Initializing Local Network Mode..." << std::endl;
+        system("nmcli connection down Hotspot > /dev/null 2>&1");
+    }
+
 	commandSocket_ = socket(AF_INET, SOCK_STREAM, 0);
 
 	commandAddress_.sin_family = AF_INET;
 	commandAddress_.sin_port = htons(COMMAND_PORT);
-	commandAddress_.sin_addr.s_addr = INADDR_ANY;//inet_addr(SERVER_IP);
+	commandAddress_.sin_addr.s_addr = INADDR_ANY; // This correctly binds to BOTH local Wi-Fi and the new AP
 	
 	int commandSocketBindResult = bind(commandSocket_, (const sockaddr*)&commandAddress_, sizeof(commandAddress_)); 
 	if(commandSocketBindResult != 0)
@@ -67,7 +86,6 @@ void NetworkManager::Init()
 		return;
 	}
 }
-
 
 void NetworkManager::StartListeningCommandAddress()
 {
@@ -183,11 +201,10 @@ void NetworkManager::TransmitCameraImageAsync()
         
         int cameraWidth = cameraManager->GetCameraWidth();
         int cameraHeight = cameraManager->GetCameraHeight();
-        int colorDepth = 3;//cameraManager->GetColorDepth();
+        
+        stbi_write_jpg_to_func(StbiWriteToVectorCallback, &jpegBuffer, cameraWidth, cameraHeight, 3, currentFrame.get(), 40);
 
-        stbi_write_jpg_to_func(StbiWriteToVectorCallback, &jpegBuffer, cameraWidth, cameraHeight, colorDepth, currentFrame.get(), 60);
-
-        int totalChunks = (jpegBuffer.size() + 1023) / 1024;
+        int totalChunks = (jpegBuffer.size() + 1399) / 1400; 
         ImageData chunk;
         chunk.frameId = ++currentFrameId;
         chunk.totalChunks = totalChunks;
@@ -195,13 +212,11 @@ void NetworkManager::TransmitCameraImageAsync()
         for (int i = 0; i < totalChunks && transmittingCameraImage_; ++i)
         {
             chunk.chunkIndex = i;
-            chunk.dataSize = std::min(static_cast<int>(jpegBuffer.size()) - (i * 1024), 1024);
-            std::memcpy(chunk.data, jpegBuffer.data() + (i * 1024), chunk.dataSize);
+            chunk.dataSize = std::min(static_cast<int>(jpegBuffer.size()) - (i * 1400), 1400);
+            std::memcpy(chunk.data, jpegBuffer.data() + (i * 1400), chunk.dataSize);
 
             int transmittedDataSize = sizeof(chunk.frameId) + sizeof(chunk.chunkIndex) + sizeof(chunk.totalChunks) + sizeof(chunk.dataSize) + chunk.dataSize;
             sendto(dataSocket_, &chunk, transmittedDataSize, 0, (sockaddr*)&dataAddress_, sizeof(dataAddress_));
-            
-            std::this_thread::sleep_for(std::chrono::microseconds(100));
         }
 
         std::this_thread::sleep_for(std::chrono::milliseconds(33)); 

@@ -14,13 +14,20 @@ namespace std
 	class thread;
 }
 
+enum class NetworkMode
+{
+    LocalNetwork,
+    AccessPoint
+};
+
 class NetworkManager : public IManager
 {
 	public:
 		NetworkManager();
 		~NetworkManager();
 
-		virtual void Init() override;
+		void Init() override {}
+		void Init(NetworkMode mode = NetworkMode::LocalNetwork);
 
 		void StartListeningCommandAddress();
 		void TransmitCameraImage();
